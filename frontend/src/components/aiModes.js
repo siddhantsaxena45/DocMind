@@ -3,10 +3,11 @@ import {
   FileText,
   ShieldCheck,
   Globe,
-  Image as ImageIcon,
   Code,
   Share2,
   BookOpen,
+  Briefcase,
+  GraduationCap
 } from "lucide-react";
 
 export const DOC_MODES = [
@@ -19,7 +20,8 @@ export const DOC_MODES = [
 
 export const OTHER_MODES = [
   { id: "research", label: "AI Research Agent", icon: Globe, description: "Deep web research & synthesis" },
-  { id: "image", label: "Image Generation", icon: ImageIcon, description: "Generate diagrams & art" },
+  { id: "resume", label: "Resume ATS Optimizer", icon: Briefcase, description: "Critique and optimize resumes" },
+  { id: "paper", label: "Paper Analyzer", icon: GraduationCap, description: "Analyze research methodology" },
   { id: "code", label: "Code Generation", icon: Code, description: "Generate code from context" },
 ];
 

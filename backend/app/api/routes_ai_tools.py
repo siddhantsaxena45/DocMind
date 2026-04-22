@@ -2,16 +2,18 @@ from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
 from typing import Optional
 from app.core.database import get_db_conn
+import asyncio
 
 from app.services.pdf_service import pdf_service
 from app.ai_features.summarizer import summarizer_feature
 from app.ai_features.document_authenticity import authenticity_checker
-from app.ai_features.image_generation import image_generator
 from app.ai_features.code_generation import code_generator
 from app.ai_features.knowledge_graph import knowledge_graph_builder
 from app.ai_features.flashcard_generator import flashcard_generator
 from app.ai_features.research_agent import research_agent
 from app.ai_features.source_credibility import credibility_evaluator
+from app.ai_features.resume_agent import resume_agent_feature
+from app.ai_features.paper_analyzer import paper_analyzer_feature
 import json
 
 router = APIRouter()
@@ -22,19 +24,13 @@ def _raise_ai_http_error(e: Exception) -> None:
     """
     msg = str(e)
     low = msg.lower()
-    # Gemini quotas / rate limits
     if "resource_exhausted" in low or "quota" in low or "rate limit" in low or "429" in low:
         raise HTTPException(status_code=429, detail="AI quota/rate limit hit. Please try again shortly.")
-    # Gemini transient overload / high demand
     if "high demand" in low or "unavailable" in low or "try again later" in low or "503" in low:
         raise HTTPException(status_code=503, detail="AI model is temporarily overloaded. Please try again later.")
-    # Invalid/expired key (misconfiguration)
     if "api key expired" in low or "api_key_invalid" in low or "invalid api key" in low:
         raise HTTPException(status_code=503, detail="AI provider credentials invalid/expired. Update your API key(s).")
 
-
-class ImageRequest(BaseModel):
-    prompt: str
 
 class CodeRequest(BaseModel):
     request: str
@@ -42,6 +38,9 @@ class CodeRequest(BaseModel):
 
 class ResearchRequest(BaseModel):
     topic: str
+
+class ResumeCritiqueRequest(BaseModel):
+    job_description: str = ""
 
 def get_document_text(document_id: str, user_id: str) -> str:
     conn = get_db_conn()
@@ -91,106 +90,127 @@ def _cache_set(user_id: str, document_id: str, feature: str, payload):
         conn.commit()
         cur.close(); conn.close()
     except Exception as e:
-        # If the document was deleted during the AI process, caching will fail due to FK violation.
-        # This is expected in race conditions; we just log and ignore.
         print(f"Non-critical: Cache insertion ignored (likely document deleted): {e}")
 
 @router.post("/document/{document_id}/insights")
-def get_insights(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
+async def get_insights(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
     try:
         if not force:
-            cached = _cache_get(user_id, document_id, "insights")
+            cached = await asyncio.to_thread(_cache_get, user_id, document_id, "insights")
             if cached is not None:
                 return {"insights": cached, "cached": True}
-        text = get_document_text(document_id, user_id)
-        data = summarizer_feature.generate_document_intelligence(text)
-        _cache_set(user_id, document_id, "insights", data)
+        text = await asyncio.to_thread(get_document_text, document_id, user_id)
+        data = await asyncio.to_thread(summarizer_feature.generate_document_intelligence, text)
+        await asyncio.to_thread(_cache_set, user_id, document_id, "insights", data)
         return {"insights": data}
     except Exception as e:
         _raise_ai_http_error(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/document/{document_id}/verify")
-def verify_document(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
+async def verify_document(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
     try:
         if not force:
-            cached = _cache_get(user_id, document_id, "verify")
+            cached = await asyncio.to_thread(_cache_get, user_id, document_id, "verify")
             if cached is not None:
                 cached["cached"] = True
                 return cached
-        text = get_document_text(document_id, user_id)
-        res = authenticity_checker.verify_document(text)
-        _cache_set(user_id, document_id, "verify", res)
+        text = await asyncio.to_thread(get_document_text, document_id, user_id)
+        res = await asyncio.to_thread(authenticity_checker.verify_document, text)
+        await asyncio.to_thread(_cache_set, user_id, document_id, "verify", res)
         return res
     except Exception as e:
         _raise_ai_http_error(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/document/{document_id}/graph")
-def get_graph(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
+async def get_graph(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
     try:
         if not force:
-            cached = _cache_get(user_id, document_id, "graph")
+            cached = await asyncio.to_thread(_cache_get, user_id, document_id, "graph")
             if cached is not None:
                 return {"graph": cached, "cached": True}
-        text = get_document_text(document_id, user_id)
-        graph = knowledge_graph_builder.build_graph(text)
-        _cache_set(user_id, document_id, "graph", graph)
+        text = await asyncio.to_thread(get_document_text, document_id, user_id)
+        graph = await asyncio.to_thread(knowledge_graph_builder.build_graph, text)
+        await asyncio.to_thread(_cache_set, user_id, document_id, "graph", graph)
         return {"graph": graph}
     except Exception as e:
         _raise_ai_http_error(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/document/{document_id}/flashcards")
-def get_flashcards(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
+async def get_flashcards(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
     try:
         if not force:
-            cached = _cache_get(user_id, document_id, "flashcards")
+            cached = await asyncio.to_thread(_cache_get, user_id, document_id, "flashcards")
             if cached is not None:
                 return {"flashcards": cached, "cached": True}
-        text = get_document_text(document_id, user_id)
-        cards = flashcard_generator.generate_flashcards(text)
-        _cache_set(user_id, document_id, "flashcards", cards)
+        text = await asyncio.to_thread(get_document_text, document_id, user_id)
+        cards = await asyncio.to_thread(flashcard_generator.generate_flashcards, text)
+        await asyncio.to_thread(_cache_set, user_id, document_id, "flashcards", cards)
         return {"flashcards": cards}
     except Exception as e:
         _raise_ai_http_error(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/tools/image")
-async def generate_image(req: ImageRequest):
-    try:
-        img_data = await image_generator.generate_image(req.prompt)
-        return {"image_data": img_data}
-    except Exception as e:
-        _raise_ai_http_error(e)
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.post("/tools/code")
-def generate_code(req: CodeRequest, document_id: Optional[str] = None, user_id: Optional[str] = None):
+async def generate_code(req: CodeRequest, document_id: Optional[str] = None, user_id: Optional[str] = None):
     try:
         context = req.context
         if document_id and user_id:
             try:
-                context = get_document_text(document_id, user_id)
+                context = await asyncio.to_thread(get_document_text, document_id, user_id)
             except Exception:
                 pass
-        code = code_generator.generate_code(req.request, context)
+        code = await asyncio.to_thread(code_generator.generate_code, req.request, context)
         return {"code": code}
     except Exception as e:
         _raise_ai_http_error(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/tools/research")
-def research_topic(req: ResearchRequest):
+async def research_topic(req: ResearchRequest):
     try:
-        res = research_agent.research(req.topic)
-        # Unique: Perform automatic credibility check on the sources
+        res = await asyncio.to_thread(research_agent.research, req.topic)
         try:
             sources = res.get("sources", [])
             if sources:
-                res["credibility"] = credibility_evaluator.evaluate_sources(sources)
+                res["credibility"] = await asyncio.to_thread(credibility_evaluator.evaluate_sources, sources)
         except Exception as e:
             print(f"Non-critical error in credibility analysis: {e}")
+        return res
+    except Exception as e:
+        _raise_ai_http_error(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/document/{document_id}/resume-critique")
+async def resume_critique(document_id: str, req: ResumeCritiqueRequest, user_id: str = Query(...), force: bool = Query(False)):
+    try:
+        feature_name = f"resume-critique:{req.job_description.strip()}"
+        if not force:
+            cached = await asyncio.to_thread(_cache_get, user_id, document_id, feature_name)
+            if cached is not None:
+                cached["cached"] = True
+                return cached
+        text = await asyncio.to_thread(get_document_text, document_id, user_id)
+        res = await asyncio.to_thread(resume_agent_feature.optimize_resume, text, req.job_description)
+        await asyncio.to_thread(_cache_set, user_id, document_id, feature_name, res)
+        return res
+    except Exception as e:
+        _raise_ai_http_error(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/document/{document_id}/paper-analysis")
+async def paper_analysis(document_id: str, user_id: str = Query(...), force: bool = Query(False)):
+    try:
+        if not force:
+            cached = await asyncio.to_thread(_cache_get, user_id, document_id, "paper-analysis")
+            if cached is not None:
+                cached["cached"] = True
+                return cached
+        text = await asyncio.to_thread(get_document_text, document_id, user_id)
+        res = await asyncio.to_thread(paper_analyzer_feature.analyze_paper, text)
+        await asyncio.to_thread(_cache_set, user_id, document_id, "paper-analysis", res)
         return res
     except Exception as e:
         _raise_ai_http_error(e)

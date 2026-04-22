@@ -36,40 +36,47 @@ Context:
         # Get current rotated keys
         api_keys = api_key_rotator.get_rotated_google_keys()
 
-        # Try API keys until one works (handling rate limits)
-        for attempt, current_key in enumerate(api_keys):
-            try:
-                llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash",
-                    temperature=0.3,
-                    google_api_key=current_key
-                )
-                
-                qa_chain = create_stuff_documents_chain(llm, prompt_template)
-                rag_chain = create_retrieval_chain(retriever, qa_chain)
+        # Try API keys until one works (handling rate limits and SSL glitches)
+        for current_key in api_keys:
+            # Each key gets 2 attempts to handle transient SSL bad record mac errors
+            for attempt in range(2):
+                try:
+                    llm = ChatGoogleGenerativeAI(
+                        model="gemini-2.0-flash", # Using 2.0-flash as it's more stable/available
+                        temperature=0.3,
+                        google_api_key=current_key
+                    )
+                    
+                    qa_chain = create_stuff_documents_chain(llm, prompt_template)
+                    rag_chain = create_retrieval_chain(retriever, qa_chain)
 
-                response = rag_chain.invoke({"input": query, "chat_history": chat_history})
-                break 
-                
-            except Exception as e:
-                error_msg = str(e)
-                if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-                    print(f"[Warning] Key {attempt + 1}/{len(api_keys)} exhausted. Rotating...")
-                    last_error = error_msg
-                    continue
-                if "API key expired" in error_msg or "API_KEY_INVALID" in error_msg or "invalid api key" in error_msg.lower():
-                    print(f"[Warning] Key {attempt + 1}/{len(api_keys)} invalid/expired. Rotating...")
-                    last_error = error_msg
-                    continue
-                else:
+                    response = rag_chain.invoke({"input": query, "chat_history": chat_history})
+                    return response # Success
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    # Handle specific retryable errors
+                    is_retryable = any(x in error_msg for x in ["429", "RESOURCE_EXHAUSTED", "BAD_RECORD_MAC", "Server disconnected"])
+                    
+                    if is_retryable:
+                        print(f"[Warning] Transient error encountered (Attempt {attempt+1}): {error_msg}. Retrying...")
+                        last_error = error_msg
+                        continue # Try next attempt for same key or next key
+                    
+                    if any(x in error_msg for x in ["API key expired", "API_KEY_INVALID"]) or "invalid api key" in error_msg.lower():
+                        print(f"[Warning] Key invalid/expired. Rotating...")
+                        last_error = error_msg
+                        break # Break inner loop to try next key
+                    
+                    # Non-retryable error
                     raise Exception(f"RAG chain error: {error_msg}")
 
         if response is None:
             if not api_keys:
-                raise AIInvalidKeyError("No Google API keys configured. Set GOOGLE_API_KEY1 (and optionally more).")
+                raise AIInvalidKeyError("No Google API keys configured. Set GOOGLE_API_KEY1.")
             if "API key expired" in last_error or "API_KEY_INVALID" in last_error or "invalid api key" in last_error.lower():
-                raise AIInvalidKeyError("All configured Google API keys are invalid/expired. Please renew/update your keys.")
-            raise AIQuotaExceededError("All AI API keys are currently rate-limited. Please wait and try again.")
+                raise AIInvalidKeyError("All configured Google API keys are invalid/expired.")
+            raise AIQuotaExceededError(f"AI service currently unavailable or rate-limited: {last_error}")
             
         return response
 

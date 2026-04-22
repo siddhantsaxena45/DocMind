@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Globe, Search, ExternalLink, Loader2, ShieldCheck } from 'lucide-react';
+import { Globe, Search, ExternalLink, Loader2, ShieldCheck, Sparkles, FileText, LayoutPanelTop, Link2, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ResearchView() {
   const [topic, setTopic] = useState(() => localStorage.getItem("docmind_research_topic") || "");
@@ -37,117 +38,188 @@ export default function ResearchView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-bg-dark p-8">
-      <div className="max-w-5xl mx-auto w-full flex flex-col h-full">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 mx-auto bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-            <Globe className="w-8 h-8 text-blue-400" />
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col p-6 md:p-10 min-h-0">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 pb-8 border-b border-white/5 shrink-0">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-brand-primary/10 rounded-lg">
+                <Globe className="w-5 h-5 text-brand-primary" />
+              </div>
+              <span className="text-[10px] font-bold text-brand-primary uppercase tracking-[0.3em]">Global Intelligence</span>
+            </div>
+            <h2 className="text-4xl font-bold text-white tracking-tight">AI Research Agent</h2>
+            <p className="text-slate-400 mt-2 text-sm">Deep-web synthesis and source credibility auditing for any research domain.</p>
           </div>
-          <h2 className="text-3xl font-bold text-white mb-4">AI Research Agent</h2>
-          <p className="text-slate-400 max-w-xl mx-auto">
-            Deep dive into any topic. Our agents will search the web, read multiple sources, and synthesize a comprehensive report with citations.
-          </p>
+          
+          <div className="flex items-center gap-6">
+             <div className="text-right">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Network Status</div>
+                <div className="flex items-center gap-2 justify-end">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                   <span className="text-xs font-bold text-white">Live Search Active</span>
+                </div>
+             </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSearch} className="mb-10 relative max-w-3xl mx-auto w-full">
+        <form onSubmit={handleSearch} className="mb-12 relative max-w-4xl mx-auto w-full group">
+          <div className="absolute inset-0 bg-brand-primary/5 blur-3xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
           <input 
             type="text" 
             value={topic}
             onChange={e => setTopic(e.target.value)}
-            placeholder="Ask a deep research question..." 
-            className="w-full bg-bg-panel border border-border-dark rounded-xl pl-6 pr-16 py-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-xl text-lg"
+            placeholder="Search complex engineering topics or academic questions..." 
+            className="w-full glass-input pl-8 pr-20 py-6 text-white focus:border-brand-primary/50 shadow-2xl text-xl relative z-10 font-medium"
           />
           <button 
             type="submit" 
             disabled={!topic.trim() || loading}
-            className="absolute right-3 top-3 bottom-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg p-3 flex items-center justify-center disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+            className="absolute right-3 top-3 bottom-3 bg-brand-primary hover:bg-brand-primary/80 text-white rounded-2xl px-6 flex items-center justify-center disabled:opacity-50 transition-all shadow-xl shadow-brand-primary/20 z-20"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6" />}
           </button>
         </form>
 
-        {error && <div className="p-4 max-w-3xl mx-auto w-full bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl mb-6">{error}</div>}
-
-        {loading && (
-          <div className="flex-1 flex flex-col justify-center items-center">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-6" />
-            <div className="text-blue-400 text-lg font-medium animate-pulse">Agents are gathering and reading sources...</div>
+        {error && (
+          <div className="p-4 max-w-3xl mx-auto w-full bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl mb-10 flex items-center gap-3 text-sm">
+             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+             {error}
           </div>
         )}
 
-        {data && (
-          <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-8 animate-fade-in overflow-y-auto lg:overflow-hidden pb-10 lg:pb-0">
-            <div className="flex-1 lg:h-full glass rounded-2xl p-6 lg:p-8 overflow-y-auto scrollbar-hide shrink-0 lg:shrink">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-400" /> Research Report
-              </h3>
-              <div className="prose prose-invert prose-blue max-w-none text-slate-300 leading-relaxed">
-                <ReactMarkdown>{data.report}</ReactMarkdown>
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.div 
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col justify-center items-center py-20"
+            >
+              <div className="relative mb-10">
+                <div className="absolute inset-0 bg-brand-primary/20 blur-3xl rounded-full animate-pulse scale-150" />
+                <Loader2 className="w-20 h-20 text-brand-primary animate-spin relative z-10" />
               </div>
-            </div>
-
-            <div className="w-full lg:w-1/3 flex flex-col gap-4 shrink-0 lg:shrink-0 lg:h-full">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Globe className="w-5 h-5 text-slate-400" /> Sources Analyzed
-              </h3>
-              <div className="space-y-4 overflow-y-auto scrollbar-hide pr-2">
-                {data.credibility && (
-                  <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl mb-6 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4" /> AI Source Analysis
-                      </div>
-                      <div className="text-xl font-bold text-emerald-400">{data.credibility.overall_credibility_score}%</div>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed italic">"{data.credibility.summary}"</p>
+              <div className="text-center space-y-4">
+                <div className="text-brand-primary text-2xl font-bold uppercase tracking-[0.4em] animate-pulse">Gathering Intelligence</div>
+                <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed">Our agents are navigating peer-reviewed archives and deep-web indices to synthesize your report.</p>
+              </div>
+            </motion.div>
+          ) : data ? (
+            <motion.div 
+              key="results"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-20 pr-2"
+            >
+              <div className="flex flex-col lg:flex-row gap-10">
+                <div className="flex-1 glass-card p-8 md:p-12 shadow-inner relative h-fit">
+                  <div className="flex items-center gap-4 mb-10 pb-6 border-b border-white/5">
+                     <div className="p-3 bg-indigo-500/10 rounded-2xl">
+                        <FileText className="w-6 h-6 text-indigo-400" />
+                     </div>
+                     <div>
+                        <h3 className="text-2xl font-bold text-white tracking-tight">Synthesis Report</h3>
+                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Multi-Agent Generated Archive</p>
+                     </div>
                   </div>
-                )}
+                  
+                  <div className="prose prose-invert prose-indigo max-w-none text-slate-300 leading-relaxed text-[17px] prose-headings:text-white prose-p:mb-6 prose-li:mb-2">
+                    <ReactMarkdown>{data.report}</ReactMarkdown>
+                  </div>
+                </div>
 
-                {data.sources?.map((src, i) => {
-                  const eval_item = data.credibility?.evaluations?.find(e => e.url === src.href);
-                  return (
-                    <a 
-                      key={i} 
-                      href={src.href} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="block p-4 bg-bg-panel border border-border-dark rounded-xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group relative overflow-hidden"
-                    >
-                      {eval_item && (
-                        <div className="absolute top-0 right-0 px-2 py-1 bg-emerald-500/20 text-[10px] font-bold text-emerald-400 rounded-bl-lg border-b border-l border-emerald-500/10">
-                          {eval_item.score}%
-                        </div>
-                      )}
-                      <div className="text-sm font-semibold text-blue-400 mb-2 truncate group-hover:underline pr-10">[{i+1}] {src.title}</div>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-snug mb-3">{src.body}</p>
-                      
-                      {eval_item && (
-                        <div className="mb-3 p-2 bg-slate-900/40 rounded-lg border border-white/5">
-                           <div className="flex items-center gap-2 mb-1">
-                             <div className="text-[10px] font-bold text-slate-500 uppercase">{eval_item.category}</div>
-                             <div className={`w-1 h-1 rounded-full ${eval_item.bias === "Neutral" ? "bg-emerald-500" : "bg-amber-500"}`}></div>
-                             <div className="text-[10px] font-bold text-slate-500 uppercase">{eval_item.bias}</div>
-                           </div>
-                           <p className="text-[10px] text-slate-400 italic">"{eval_item.notes}"</p>
-                        </div>
-                      )}
+                <div className="w-full lg:w-[400px] flex flex-col gap-8 shrink-0">
+                  <section>
+                     <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                       <ShieldCheck className="w-4 h-4 text-emerald-500" /> Source Integrity
+                     </h3>
+                     
+                     {data.credibility && (
+                       <div className="glass-card p-8 border-l-4 border-l-emerald-500/50 bg-emerald-500/5 shadow-2xl shadow-emerald-500/5">
+                          <div className="flex items-center justify-between mb-6">
+                             <div className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Overall Confidence</div>
+                             <div className="text-3xl font-black text-emerald-400">{data.credibility.overall_credibility_score}%</div>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-6">
+                             <motion.div 
+                               initial={{ width: 0 }}
+                               animate={{ width: `${data.credibility.overall_credibility_score}%` }}
+                               className="h-full bg-emerald-500 shadow-[0_0_10px_#10b981]"
+                             />
+                          </div>
+                          <p className="text-[13px] text-slate-400 leading-relaxed italic font-medium">"{data.credibility.summary}"</p>
+                       </div>
+                     )}
+                  </section>
 
-                      <div className="mt-2 text-xs text-slate-500 flex items-center gap-1 opacity-60">
-                        <ExternalLink className="w-3 h-3" /> {new URL(src.href).hostname}
-                      </div>
-                    </a>
-                  );
-                })}
+                  <section className="flex flex-col gap-6">
+                    <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                      <Zap className="w-4 h-4 text-brand-secondary" /> Knowledge Nodes
+                    </h3>
+                    <div className="space-y-4">
+                      {data.sources?.map((src, i) => {
+                        const eval_item = data.credibility?.evaluations?.find(e => e.url === src.href);
+                        return (
+                          <motion.a 
+                            key={i} 
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            href={src.href} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="block glass-card p-5 hover:border-brand-primary/30 hover:bg-white/5 transition-all group relative overflow-hidden"
+                          >
+                            {eval_item && (
+                              <div className="absolute top-0 right-0 px-2 py-1 bg-emerald-500/20 text-[9px] font-black text-emerald-400 rounded-bl-xl border-b border-l border-emerald-500/10">
+                                {eval_item.score}% REL
+                              </div>
+                            )}
+                            <div className="text-[13px] font-bold text-brand-primary mb-2 truncate group-hover:text-white transition-colors pr-10">[{i+1}] {src.title}</div>
+                            <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed mb-4">{src.body}</p>
+                            
+                            {eval_item && (
+                              <div className="mb-4 p-3 bg-slate-950/40 rounded-xl border border-white/5">
+                                 <div className="flex items-center gap-3 mb-2">
+                                   <div className="px-1.5 py-0.5 bg-slate-800 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest">{eval_item.category}</div>
+                                   <div className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${eval_item.bias === "Neutral" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}>
+                                     {eval_item.bias}
+                                   </div>
+                                 </div>
+                                 <p className="text-[10px] text-slate-500 italic font-medium leading-relaxed">"{eval_item.notes}"</p>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between mt-auto">
+                               <div className="text-[10px] text-slate-600 flex items-center gap-2 font-bold uppercase tracking-widest">
+                                  <Link2 className="w-3 h-3" /> {new URL(src.href).hostname}
+                               </div>
+                               <ExternalLink className="w-3 h-3 text-slate-700 group-hover:text-white transition-colors" />
+                            </div>
+                          </motion.a>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-6 py-20"
+            >
+               <LayoutPanelTop className="w-20 h-20" />
+               <p className="text-sm font-black uppercase tracking-[0.3em]">Awaiting Intelligence Topic</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-// Inline FileText for this specific file since it's not imported at the top
-const FileText = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
-);

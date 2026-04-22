@@ -55,7 +55,7 @@ export default function FlashcardView({ documentId, userId }) {
   if (!documentId) return <div className="p-8 text-slate-400">Select a document first.</div>;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto h-full flex flex-col">
+    <div className="p-8 max-w-4xl mx-auto h-full flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
        <div className="flex justify-between items-center mb-10 shrink-0">
         <div>
           <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
