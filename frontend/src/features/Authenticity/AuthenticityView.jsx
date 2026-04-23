@@ -85,7 +85,7 @@ export default function AuthenticityView({ documentId, userId }) {
               <Loader2 className="w-16 h-16 text-emerald-500 animate-spin relative z-10" />
             </div>
             <p className="text-lg font-bold text-white mb-2 uppercase tracking-widest">Deep Scanning...</p>
-            <p className="text-sm text-slate-500 animate-pulse">Consulting live web indices via Gemini 2.0</p>
+            <p className="text-sm text-slate-500 animate-pulse">Consulting live web indices via Gemini 2.5</p>
           </div>
         )}
 
