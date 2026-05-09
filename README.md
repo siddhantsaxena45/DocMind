@@ -1,376 +1,267 @@
 # 🧠 DocMind: Production-Grade Multi-Agent Research Ecosystem
-## Comprehensive Software Requirements Specification (SRS), Unique Selling Proposition (USP), and Research Report
 
----
+**DocMind transforms static documents into dynamic, verified intelligence. It isn't just a RAG bot—it's an autonomous AI workforce that audits, visualizes, and expands your research with surgical precision.**
 
-> **DocMind transforms static documents into dynamic, verified intelligence. It isn't just a RAG bot—it's an autonomous AI workforce that audits, visualizes, and expands your research with surgical precision.**
 
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![CrewAI](https://img.shields.io/badge/CrewAI-Orchestration-orange?style=for-the-badge)
-![Gemini](https://img.shields.io/badge/Google_Gemini-2.5_Flash-blue?style=for-the-badge&logo=google-gemini)
-![Pinecone](https://img.shields.io/badge/Pinecone-Vector_DB-black?style=for-the-badge)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-
----
 
 ## 📑 Table of Contents
 
-1. [Executive Summary & Unique Selling Proposition (USP)](#1-executive-summary--unique-selling-proposition-usp)
-2. [Introduction & Project Scope](#2-introduction--project-scope)
-3. [Software Requirements Specification (SRS)](#3-software-requirements-specification-srs)
-    - [Functional Requirements](#31-functional-requirements)
-    - [Non-Functional Requirements](#32-non-functional-requirements)
-    - [User Roles & Personas](#33-user-roles--personas)
-4. [Architectural Design & Data Flow](#4-architectural-design--data-flow)
-    - [Frontend Architecture](#41-frontend-architecture)
-    - [Backend Architecture](#42-backend-architecture)
-    - [Persistence & Database](#43-persistence--database)
-5. [Detailed Feature Workflows (Deep Dive)](#5-detailed-feature-workflows-deep-dive)
-    - [5.1 Document Authenticity Auditor](#51-document-authenticity-auditor)
-    - [5.2 Knowledge Graph Studio](#52-knowledge-graph-studio)
-    - [5.3 Advanced Research Agent](#53-advanced-research-agent)
-    - [5.4 Resume & ATS Optimizer](#54-resume--ats-optimizer)
-    - [5.5 Scientific Paper Analyzer](#55-scientific-paper-analyzer)
-    - [5.6 Code Generator](#56-code-generator)
-    - [5.7 Flashcard Generator](#57-flashcard-generator)
-    - [5.8 Source Credibility Engine](#58-source-credibility-engine)
-    - [5.9 Text Summarizer](#59-text-summarizer)
-6. [API Specification](#6-api-specification)
-7. [Tech Stack & Integration Rationale](#7-tech-stack--integration-rationale)
-8. [Research Report: The Evolution of Document Intelligence](#8-research-report-the-evolution-of-document-intelligence)
-9. [Comprehensive Deployment Guide](#9-comprehensive-deployment-guide)
-10. [Testing & Quality Assurance](#10-testing--quality-assurance)
-11. [Future Roadmap](#11-future-roadmap)
+1. [Executive Summary & Vision](#1-executive-summary--vision)
+2. [The Unique Selling Proposition (USP)](#2-the-unique-selling-proposition-usp)
+3. [Research Report: The Shift to Multi-Agent Systems](#3-research-report-the-shift-to-multi-agent-systems)
+4. [Software Requirements Specification (SRS)](#4-software-requirements-specification-srs)
+    - [4.1 Functional Requirements (Agent Capabilities)](#41-functional-requirements-agent-capabilities)
+    - [4.2 Non-Functional Requirements](#42-non-functional-requirements)
+5. [System Architecture & Data Flow](#5-system-architecture--data-flow)
+6. [API Specification & Payloads](#6-api-specification--payloads)
+7. [Comprehensive Setup Guide](#7-comprehensive-setup-guide)
+8. [Testing & Quality Assurance](#8-testing--quality-assurance)
 
 ---
 
-## 1. Executive Summary & Unique Selling Proposition (USP)
+## 1. Executive Summary & Vision
 
-### 1.1 The Problem
-In an era saturated with generic Large Language Model (LLM) wrappers and basic Retrieval-Augmented Generation (RAG) applications, users face significant challenges:
-1. **Hallucinations**: LLMs confidently invent facts when context is missing.
-2. **Context Window Limitations**: Processing dense, 50-page scientific papers often exceeds standard token limits or degrades the LLM's reasoning capability ("Lost in the Middle" phenomenon).
-3. **Static Analysis**: Most tools only analyze the document in isolation. They cannot venture out to the live web to verify if the claims within the document are actually true.
-4. **Lack of Specialization**: A single prompt trying to grade a resume, analyze a scientific paper, and check facts simultaneously results in shallow, mediocre outputs.
+### 1.1 Project Purpose
+DocMind is engineered to automate the severe cognitive labor required when analyzing, verifying, and expanding upon dense textual documents. While modern Large Language Models (LLMs) are exceptionally good at summarizing text, they fail critically when asked to *verify* the objective truth of the text they are reading. 
 
-### 1.2 The DocMind Solution (USP)
-DocMind provides a specialized **Research & Verification Engine** that standard chatbots cannot match. Instead of relying on a single, monolithic LLM prompt, DocMind deploys a **Multi-Agent Orchestration Framework (CrewAI)**.
+DocMind solves this by orchestrating a suite of autonomous agents (powered by CrewAI) that act as an investigative team. Whether deployed for HR professionals rigorously screening technical resumes, or academics deconstructing complex distributed systems research papers, DocMind acts as an active investigator rather than a passive reader.
 
-**Key Differentiators:**
+### 1.2 Target Personas
+1. **The Academic Researcher**: Uses the *Paper Analyzer* to extract methodologies and the *Knowledge Graph* to find hidden ontological correlations across literature.
+2. **The HR Technical Recruiter**: Uses the *Authenticity Auditor* to physically scrape provided GitHub links on a resume to verify claims, utilizing the *ATS Optimizer* to standardize candidate scoring.
+3. **The Software Architect**: Uses the *Code Generator* to instantly scaffold boilerplate based on an uploaded specification, relying on the *Research Agent* to find external API documentation.
 
-| Feature | DocMind's Multi-Agent Ecosystem | Standard Chatbots (ChatGPT / Gemini / Claude) |
+---
+
+## 2. The Unique Selling Proposition (USP)
+
+In an ecosystem saturated with simple "Chat with PDF" wrappers (standard Retrieval-Augmented Generation), DocMind differentiates itself through **Action-Oriented Verification**.
+
+### 2.1 The "Link-First" Verification Methodology
+When a user uploads a resume claiming a "9.0 GPA" or a "React Redux application," a standard LLM cannot verify this; it simply regurgitates the text. 
+
+DocMind's USP is its **Authenticity Auditor Agent**. 
+1. **Extraction**: It scans hidden PDF annotations using PyPDF to find personal URLs (LinkedIn, LeetCode, GitHub).
+2. **Scraping**: It uses Trafilatura and randomized HTTP headers to physically navigate to those specific links.
+3. **Grounding**: It searches those specific pages for the claims made in the document *before* doing a general web search, drastically reducing hallucinated conflicts caused by namesakes.
+
+### 2.2 Conflict vs. Evolution Logic
+A major flaw in generic RAG is the inability to understand temporal evolution. If a document states a target graduation of 2026 with a 9.0 CGPA, but the web shows an older 2024 archive with an 8.2 CGPA, standard bots flag this as a lie. DocMind's prompts are explicitly engineered to distinguish between *contradictory facts* and *evolved timelines*, offering unparalleled accuracy in HR tech screening.
+
+### 2.3 Competitive Analysis
+| Capability | DocMind (Multi-Agent System) | Standard RAG (ChatGPT / Gemini) |
 | :--- | :--- | :--- |
-| **Verification Logic** | **Link-First Auditor**: Scans hidden PDF annotations for URLs and verifies them via live web scraping using Trafilatura. | Basic web browsing; lacks specific "verification" goal-setting and prioritizes generic search. |
-| **Conflict Resolution** | **Evolution-Aware**: Distinguishes between outdated web data and recent document claims (e.g., Target GPAs). | Often flags temporal differences as "hallucinations" due to static training data cutoffs. |
-| **Knowledge Display** | **Physics-Based Graphs**: Interactive SVG entity-relationship mapping powered by D3.js. | Text-only hierarchical responses and markdown tables. |
-| **Orchestration** | **Multi-Agent Autonomy**: Specialized agents (Auditor, Researcher, Recruiter) use tools in sequential loops. | Single-shot prompt execution with limited cognitive step-back capability. |
-| **Reliability** | **Key Rotation & Persistence**: Automatic API key cycling and Supabase-managed JSONB payload caching. | Subject to standard individual quota limits and frequent timeout errors. |
-
-DocMind isn't a passive tool; it's an **active investigator**. If an applicant claims to have built a "React Redux Application" on their resume, DocMind will extract their provided GitHub link, navigate to the repository, scrape the `package.json`, and verify the claim in real-time.
+| **Verification** | **Active Investigation**: Scrapes document-provided links to verify specific claims in real-time. | **Passive Retrieval**: Relies solely on static training data or generic, unfocused web browsing. |
+| **Orchestration** | **Role-Based Pipelines**: A 'Recruiter' agent critiques the output of an 'ATS' agent. | **Single-Shot**: One prompt attempts to do everything, leading to shallow analysis. |
+| **Visual Mapping** | **Physics-Based SVG Graphs**: Interactive D3.js knowledge maps derived directly from text. | **Text Only**: Generates markdown tables at best. |
+| **Reliability** | **API Key Rotation & Cache**: Fallback routing and Supabase JSONB persistence. | **Quota Limited**: Frequent timeout/429 errors during heavy document processing. |
 
 ---
 
-## 2. Introduction & Project Scope
+## 3. Research Report: The Shift to Multi-Agent Systems
 
-### 2.1 Project Purpose
-The purpose of DocMind is to automate the cognitive labor associated with reading, analyzing, verifying, and expanding upon dense textual documents. This is particularly targeted at HR professionals screening resumes, academics reviewing scientific literature, and researchers synthesizing large volumes of text.
+*This section provides the theoretical underpinning for DocMind's architecture.*
 
-### 2.2 Scope of the Document
-This README serves as the complete operational, architectural, and business document for the DocMind repository. It is intended for:
-- **Developers**: To understand the codebase, API routes, and agent logic.
-- **System Architects**: To evaluate the scalability, security, and integration of Supabase, Pinecone, and FastAPI.
-- **Product Managers**: To understand the feature set and future roadmap.
-- **Academics/Researchers**: To review the embedded Research Report detailing the theoretical underpinnings of Multi-Agent Systems (MAS) in Document Intelligence.
+### 3.1 The Limitations of Standard RAG
+Retrieval-Augmented Generation (RAG) solved the initial problem of LLM knowledge cutoffs by injecting retrieved document chunks into the prompt context via Vector Databases. However, standard RAG suffers from severe limitations:
+1. **The Static Context Problem**: RAG inherently assumes the provided document is the absolute truth. If a document contains fabricated data (e.g., a faked credential), standard RAG will confidently parrot that fabrication as fact.
+2. **Context Fragmentation ("Lost in the Middle")**: When querying a massive document, retrieving the "Top K" chunks often fragments the narrative. A methodology described on page 2 might mathematically rely on an equation on page 40. Chunking breaks this semantic link.
+
+### 3.2 The Multi-Agent Solution (MAS)
+DocMind abandons the monolithic single-prompt paradigm in favor of a Multi-Agent System (MAS). By instantiating distinct agents using **CrewAI**, the system achieves **Cognitive Separation of Concerns**.
+
+- **Tool Use & Environmental Interaction**: Standard LLMs are closed systems. DocMind's agents are open systems. They interact with their environment via specialized tools (`web_search` via DDGS and `read_web_page` via Trafilatura). 
+- **Iterative Refinement**: The "Senior Engineering Recruiter" agent does not just read the raw text; it reads the highly-structured output of the "ATS Scanner" agent first. This mimics human collaborative workflows and drastically reduces context window pollution.
+
+### 3.3 Mitigating Hallucinations in Vector Space
+To solve Context Fragmentation, DocMind utilizes **Pinecone Isolated Namespaces**. Instead of dumping all embeddings into a single index pool (which leads to catastrophic cross-document hallucination), every document is indexed into a unique namespace tied to a secure `user_id`. The vector search space is cryptographically bound, ensuring a 0% cross-contamination rate.
 
 ---
 
-## 3. Software Requirements Specification (SRS)
+## 4. Software Requirements Specification (SRS)
 
-### 3.1 Functional Requirements
+### 4.1 Functional Requirements (Agent Capabilities)
 
-#### FR-1: Document Ingestion & Parsing
-- **FR-1.1**: The system must accept `.txt` and `.pdf` files.
-- **FR-1.2**: The system must extract hidden hyperlink annotations from PDF files.
-- **FR-1.3**: Text must be chunked using a `RecursiveCharacterTextSplitter` to maintain semantic meaning.
+DocMind operates 9 distinct AI agent pipelines, each rigorously defined:
 
-#### FR-2: Multi-Agent AI Features
-- **FR-2.1 (Authenticity)**: The system must verify claims in the document by searching the live web and reading external URLs.
-- **FR-2.2 (Knowledge Graph)**: The system must extract Source, Target, Relation, Confidence, and Evidence from the text.
-- **FR-2.3 (Research Agent)**: The system must perform autonomous web searches to expand on the document's topic and provide a cited report.
-- **FR-2.4 (Resume Optimization)**: The system must act as an ATS scanner and a technical recruiter, rewriting bullet points using the STAR method.
-- **FR-2.5 (Paper Analyzer)**: The system must analyze scientific papers for methodology, findings, and citation reliability.
-- **FR-2.6 (Code Generation)**: The system must generate boilerplate code based on document specifications.
-- **FR-2.7 (Flashcards)**: The system must generate active-recall flashcards from the text.
-- **FR-2.8 (Credibility Scoring)**: The system must evaluate the credibility of sources using domain authority heuristics.
-- **FR-2.9 (Summarization)**: The system must provide multi-level summarizations.
+#### FR-1: The Authenticity Auditor
+- **Requirement**: The system must extract URLs from the document, visit those URLs, and cross-reference them against 3-5 core claims extracted from the text.
+- **Output**: A strict JSON object containing a confidence score, a list of verified claims with live-web evidence snippets, and a list of unverified anomalies.
 
-#### FR-3: Vector Search & RAG
-- **FR-3.1**: The system must index document chunks into Pinecone.
-- **FR-3.2**: The system must enforce Isolated Namespaces per user/document to prevent cross-document hallucination.
+#### FR-2: Knowledge Graph Studio
+- **Requirement**: The system must extract ontological relationships representing the core concepts of the text.
+- **Output**: A JSON array defining `source`, `target`, `relation`, `confidence` (0-100), and `evidence` (a 10-word justification).
 
-### 3.2 Non-Functional Requirements
+#### FR-3: The ATS & Recruiter Pipeline
+- **Requirement**: A dual-agent system where Agent A scores the document against a Job Description, and Agent B rewrites the 3 weakest bullet points.
+- **Constraint**: Agent B must strictly utilize the **STAR Method** (Situation, Task, Action, Result) for all rewrites.
+
+#### FR-4: Scientific Paper Analyzer
+- **Requirement**: The system must deconstruct academic literature into core Hypothesis, Methodology (bulleted sequence), Datasets Used, Limitations, and Future Scope.
+
+#### FR-5: Advanced Research Synthesis
+- **Requirement**: The system must perform multi-hop web searches independent of the uploaded document to expand on a user query.
+- **Thread Safety**: Searches must utilize Python `threading.local()` to prevent User A from seeing User B's search history during concurrent API requests.
+
+#### FR-6: Source Credibility Engine
+- **Requirement**: The system must evaluate the URLs retrieved by FR-5, scoring them based on domain authority heuristics and identifying inherent bias (Neutral vs. Biased).
+
+#### FR-7 through FR-9: Utilities
+- System must provide multi-level Text Summarization.
+- System must generate Anki-compatible Flashcards.
+- System must generate boilerplate Code structures derived from textual specifications.
+
+### 4.2 Non-Functional Requirements
 
 #### NFR-1: Performance & Latency
-- **NFR-1.1**: Static API routes (e.g., fetching cached results) must respond in under 200ms.
-- **NFR-1.2**: Asynchronous agent tasks (e.g., web research) may take up to 250 seconds but must not block the main FastAPI thread.
-- **NFR-1.3**: The React frontend must maintain a consistent 60 FPS during physics-based graph rendering.
+- **Static Routes**: Fetching cached results from Supabase must resolve in `< 200ms`.
+- **Agentic Routes**: Asynchronous web-scraping pipelines may take up to `250 seconds`. They must utilize FastAPI's `async def` and `asyncio.to_thread` to prevent blocking the main event loop.
+- **Frontend**: The D3.js physics graph must maintain 60 FPS under a load of 100 nodes.
 
-#### NFR-2: Reliability & Fault Tolerance
-- **NFR-2.1**: The system must implement an `api_key_rotator` to automatically switch LLM API keys upon hitting rate limits (HTTP 429) or authentication errors.
-- **NFR-2.2**: The system must provide fallback mechanisms (e.g., falling back to a direct LangChain call if CrewAI orchestration fails).
+#### NFR-2: Reliability & API Key Rotation
+- **Requirement**: The system must implement an `APIKeyRotator` singleton. 
+- **Trigger**: Upon receiving `RESOURCE_EXHAUSTED` (429) or `INVALID_API_KEY` errors, the system must immediately cycle the array of Google Gemini API keys to ensure uninterrupted service.
 
-#### NFR-3: Security & Privacy
-- **NFR-3.1**: Web scraping tools (Trafilatura) must use rotating User-Agents and realistic headers to prevent IP blocking.
-- **NFR-3.2**: User sessions must be secured via JWT.
-
-### 3.3 User Roles & Personas
-1. **The Academic Researcher**: Uploads 40-page PDFs. Uses the Paper Analyzer and Knowledge Graph to find hidden correlations between methodologies.
-2. **The HR Recruiter**: Uploads 100+ resumes. Uses the Authenticity Auditor to verify GitHub links and the ATS Optimizer to standardize candidate scores.
-3. **The Software Engineer**: Uploads technical specifications. Uses the Code Generator to scaffold boilerplates and the Research Agent to find documentation on new libraries.
+#### NFR-3: Persistence & Feature Caching
+- **Requirement**: Running Agent pipelines is computationally expensive. The system must utilize PostgreSQL `JSONB` columns in Supabase to cache the exact JSON output of a feature request. If a user requests a Knowledge Graph twice, the second request must instantly return the cached JSONB object.
 
 ---
 
-## 4. Architectural Design & Data Flow
+## 5. System Architecture & Data Flow
 
-DocMind is built on a modular, decoupled architecture designed for high throughput and reliability.
+DocMind is a polyglot microservice architecture, leveraging React/Vite on the client and Python/FastAPI on the server.
 
-### 4.1 Frontend Architecture (React + Vite)
-- **Framework**: React 18 with Vite for blazing-fast Hot Module Replacement (HMR).
-- **Styling**: Vanilla CSS utilizing Glassmorphic UI paradigms, CSS variables for theming, and smooth transitions.
-- **State Management**: Context API and local component state. The application features a persistent tab system that remembers the user's active view.
-- **Visualization**: D3.js physics simulations. Nodes represent entities; edges represent relationships. The physics engine handles collision detection and gravity.
-
-### 4.2 Backend Architecture (FastAPI)
-- **Framework**: FastAPI (Python 3.10+) leveraging standard Python type hints for data validation via Pydantic.
-- **Concurrency**: Asynchronous routes (`async def`) handle non-blocking IO operations. Heavy CPU-bound AI tasks are offloaded.
-- **Agent Orchestration**: CrewAI manages the lifecycle of AI agents. It assigns roles, goals, tools (DuckDuckGo, Trafilatura), and memory.
+### 5.1 Architecture Diagram
 
 ```mermaid
 graph TD
-    A[Client UI] -->|HTTP POST| B(FastAPI Gateway)
-    B --> C{Task Router}
-    C -->|Vector Ops| D[Pinecone Service]
-    C -->|Agent Ops| E[CrewAI Orchestrator]
-    C -->|Persistence| F[(Supabase PostgreSQL)]
+    Client[React + Vite Frontend] -->|HTTP POST| Gateway(FastAPI Gateway)
     
-    E --> G[Investigative Agent]
-    E --> H[Research Agent]
-    E --> I[ATS Agent]
+    Gateway --> Router{Task Router}
     
-    G --> J((Live Web Scraper))
-    H --> J
+    Router -->|RAG Retrieval| VectorDB[(Pinecone Vector DB)]
+    Router -->|Agentic Processing| Orchestrator[CrewAI MAS Orchestrator]
+    Router -->|State & Cache| RelationalDB[(Supabase PostgreSQL)]
+    
+    Orchestrator --> Agent1[Investigative Agent]
+    Orchestrator --> Agent2[Recruiter Agent]
+    Orchestrator --> Agent3[Research Agent]
+    
+    Agent1 --> Scraper((Trafilatura + DDGS))
+    Agent3 --> Scraper
+    
+    RelationalDB -->|JSONB Hydration| Client
 ```
 
-### 4.3 Persistence & Database (Supabase + Pinecone)
-- **Supabase**: Serves as the primary relational database. It utilizes PostgreSQL's `JSONB` column types to store the complex, nested JSON outputs from the AI agents. This "Feature Cache" prevents users from having to re-run expensive AI tasks on the same document.
-- **Pinecone**: Serves as the Vector Database. Text is converted into dense vector embeddings using Google's embedding models and stored here. Crucially, DocMind uses Pinecone's **Namespaces** feature to isolate documents.
+### 5.2 The Frontend React Flow
+The frontend utilizes a highly-optimized Context API state architecture. To provide a "Glassmorphic" premium feel, vanilla CSS with advanced backdrop filters is used heavily.
+- **Tab Persistence**: When users switch between the 9 feature tabs, local component state is preserved to avoid re-rendering heavy D3 physics models.
+- **Error Normalization**: The UI gracefully handles 503 Overload errors and 429 Rate Limits by rendering human-readable "Quota Exhausted" alerts rather than raw backend stack traces.
 
 ---
 
-## 5. Detailed Feature Workflows (Deep Dive)
+## 6. API Specification & Payloads
 
-This section details the internal mechanics, prompt engineering strategies, and code logic for the 9 core AI features located in `backend/app/ai_features/`.
+The FastAPI backend exposes fully typed, validated endpoints.
 
-### 5.1 Document Authenticity Auditor (`document_authenticity.py`)
-This is the crown jewel of DocMind's verification capabilities.
+### 6.1 Authentication & Document Processing
 
-**The Logic Flow:**
-1. **Tool Definition**: It utilizes two custom tools: `web_search` (using `ddgs.text`) and `read_web_page` (using `httpx` and `trafilatura` to bypass anti-bot mechanisms).
-2. **The Agent**: The "Investigative Fact Checker" is instantiated with a specific backstory demanding skepticism and a strict adherence to a "Link-First" verification methodology.
-3. **The Task**: 
-   - Extract links from the document.
-   - Extract claims.
-   - Visit the provided links first. If an applicant provides a LinkedIn URL, the agent MUST scrape that URL before doing a general web search.
-   - Apply "Conflict Resolution". The prompt explicitly instructs the LLM: *“a '9.09 CGPA' in a 2026/2027 document IS NOT contradicted by an 8.2 CGPA found in an older 2024 web source.”*
-4. **Fallback Mechanism**: If all API keys fail during the complex CrewAI orchestration, it gracefully degrades to a single-shot LangChain prompt to provide a basic analysis without live web scraping.
+**POST `/api/v1/upload`**
+- **Description**: Ingests a PDF, chunks it using `RecursiveCharacterTextSplitter`, extracts metadata, and indexes into Pinecone under a unique `user_id` namespace.
 
-### 5.2 Knowledge Graph Studio (`knowledge_graph.py`)
-Extracts ontological relationships to build visual graphs.
+### 6.2 Agentic Intelligence Endpoints
 
-**The Logic Flow:**
-1. **The Agent**: The "Knowledge Engineer".
-2. **The Task**: The LLM is instructed to extract up to 20 high-quality edges. For every edge, it must strictly return: `source`, `target`, `relation`, `confidence` (0-100), and `evidence` (a 10-word snippet justifying the link).
-3. **Frontend Integration**: The JSON array returned is parsed by the React frontend and fed directly into a D3 force-directed graph.
-
-### 5.3 Advanced Research Agent (`research_agent.py`)
-Conducts autonomous multi-hop research.
-
-**The Logic Flow:**
-1. **Concurrency Safety**: Because multiple users might request research simultaneously, the code uses Python's `threading.local()` to store the sources (`_thread_local.sources`). This prevents User A from seeing User B's search history.
-2. **The Task**: The agent uses DuckDuckGo to find URLs, reads the full HTML content of the top 3 URLs using Trafilatura, and synthesizes a Markdown report with inline citations (e.g., `[1]`).
-
-### 5.4 Resume & ATS Optimizer (`resume_agent.py`)
-A dual-agent system simulating an HR pipeline.
-
-**The Logic Flow:**
-1. **Agent 1: ATS Scoring System**: Parses the resume strictly for formatting and keywords against a provided Job Description. Outputs a base score out of 100.
-2. **Agent 2: Senior Engineering Recruiter**: Takes the output of Agent 1 and critiques it. It enforces the **STAR Method** (Situation, Task, Action, Result) and rewrites the weakest bullet points into quantifiable, high-impact statements.
-
-### 5.5 Scientific Paper Analyzer (`paper_analyzer.py`)
-Deconstructs academic literature.
-- Extracts the core Hypothesis.
-- Evaluates the Methodology for flaws or sample size issues.
-- Summarizes the Findings.
-- Identifies "Future Work" to help researchers find gaps in the literature.
-
-### 5.6 Code Generator (`code_generation.py`)
-Parses technical documents and generates relevant code.
-- Capable of generating boilerplate templates, database schemas, or API routes based on the system design specified in the uploaded document.
-
-### 5.7 Flashcard Generator (`flashcard_generator.py`)
-Educational tool for active recall.
-- Parses the document and generates a JSON array of `{"question": "...", "answer": "..."}` objects, ideal for exporting to Anki or Quizlet.
-
-### 5.8 Source Credibility Engine (`source_credibility.py`)
-Evaluates the trustworthiness of references.
-- Analyzes domains, cross-references with known credible sources, and provides a "Trust Score" alongside potential biases found in the text.
-
-### 5.9 Text Summarizer (`summarizer.py`)
-Provides Multi-level summaries (TL;DR, Executive Summary, Detailed Chapter-by-Chapter breakdown).
-
----
-
-## 6. Tech Stack & Integration Rationale
-
-| Technology | Role | Rationale & Justification |
-| :--- | :--- | :--- |
-| **FastAPI** | Backend Framework | Chosen for native `async` support. When an AI agent takes 45 seconds to scrape the web, FastAPI's asynchronous event loop ensures other users are not blocked. |
-| **CrewAI** | Agent Orchestrator | Superior to LangChain's basic agents. CrewAI allows assigning specific roles, backstories, and sequential processing pipelines, making multi-agent collaboration feasible. |
-| **Google Gemini 2.5 Flash** | Core LLM | Flash provides an unparalleled 1M+ token context window at a fraction of the cost of GPT-4, allowing DocMind to process entire 50-page PDFs in a single API call without aggressive chunking. |
-| **Supabase (PostgreSQL)** | Database | Serves as a robust Backend-as-a-Service (BaaS). The native JSONB support is critical for caching unstructured AI responses. |
-| **Pinecone** | Vector DB | Serverless architecture. The Namespaces feature provides hard isolation between documents, preventing data leakage. |
-| **Trafilatura** | Web Scraper | Radically more precise than BeautifulSoup. It automatically strips headers, footers, ads, and boilerplate, returning only the core content necessary for the LLM. |
-| **Vite + React** | Frontend | Instant server start and HMR drastically improve DX (Developer Experience). |
-
----
-
-## 7. API Specification
-
-DocMind's FastAPI backend exposes several RESTful endpoints.
-
-### 7.1 Agentic Endpoints
-
-**POST `/api/v1/analyze/authenticity`**
-- **Description**: Triggers the Investigative Fact Checker.
-- **Payload**: `{"text": "document text...", "doc_id": "12345"}`
-- **Response**:
+**POST `/api/v1/document/{document_id}/verify`**
+- **Query Params**: `user_id` (string, required), `force` (boolean, defaults to false to allow caching).
+- **Description**: Triggers the Authenticity Auditor.
+- **Response Shape**:
 ```json
 {
   "score": 85,
   "verified_sources": [
     {
-      "claim": "Developed a React Native application",
-      "sources": ["https://github.com/user/repo"],
+      "claim": "Maintained a 9.0 GPA across 6 semesters.",
+      "sources": ["https://university.edu/records/123"],
       "status": "Verified",
-      "evidence_snippet": "Repository contains standard React Native file structure."
+      "evidence_snippet": "Cumulative GPA: 9.02 as of Fall 2025."
     }
   ],
-  "unverified_claims": []
+  "unverified_claims": [
+    {
+      "claim": "Deployed a 10,000 MAU application.",
+      "reason": "Could not find evidence of traffic metrics on the provided GitHub repository or live URL.",
+      "status": "Unverified"
+    }
+  ],
+  "cached": false
 }
 ```
 
-**POST `/api/v1/analyze/resume`**
-- **Description**: Triggers the ATS & Recruiter Agents.
-- **Payload**: `{"text": "resume text...", "job_description": "optional JD text"}`
-- **Response**:
+**POST `/api/v1/document/{document_id}/resume-critique`**
+- **Body Payload**: `{"job_description": "We are looking for a Senior React Developer..."}`
+- **Response Shape**:
 ```json
 {
   "ats_score": 72,
-  "missing_sections_or_keywords": ["Docker", "CI/CD"],
+  "missing_sections_or_keywords": ["Docker", "CI/CD Pipeline", "TypeScript"],
   "bullet_rewrites": [
     {
-      "original": "Worked on backend database.",
-      "suggestion": "Designed and optimized PostgreSQL schemas, reducing query latency by 40%."
+      "original": "Worked on the backend database.",
+      "suggestion": "Designed and optimized PostgreSQL database schemas, reducing average query latency by 40% and improving overall application throughput."
     }
   ],
-  "overall_feedback": "Strong project experience, but lacking explicit mention of deployment strategies."
+  "overall_feedback": "Strong foundational project experience, but lacking explicit mention of deployment strategies required by the JD."
 }
 ```
 
 ---
 
-## 8. Research Report: The Evolution of Document Intelligence
+## 7. Comprehensive Setup Guide
 
-*This section serves as a formal academic/technical report justifying the architectural decisions made in DocMind.*
+### 7.1 System Prerequisites
+- Python 3.10+
+- Node.js 18+
+- Supabase Project (PostgreSQL)
+- Pinecone Index (Dimension: 768, Metric: Cosine)
 
-### 8.1 The Limitations of Standard RAG
-Retrieval-Augmented Generation (RAG) solved the initial problem of LLM knowledge cutoffs by injecting retrieved document chunks into the prompt context. However, standard RAG suffers from severe limitations:
-1. **The Static Context Problem**: RAG assumes the provided document is the absolute truth. If a document contains fabricated data (e.g., a fake credential in a resume), standard RAG will confidently parrot that fabrication.
-2. **Context Fragmentation**: When querying a large document, retrieving the "Top K" chunks often fragments the narrative. A methodology described on page 2 might rely on an equation on page 40.
-
-### 8.2 The Multi-Agent Solution (MAS)
-DocMind abandons the single-prompt paradigm in favor of a Multi-Agent System. By instantiating distinct agents (Fact Checker, Recruiter, Researcher) using CrewAI, the system achieves **Cognitive Separation of Concerns**.
-
-- **Tool Use & Environmental Interaction**: Standard LLMs are closed systems. DocMind's agents are open systems. They interact with their environment via the `web_search` and `read_web_page` tools.
-- **Iterative Refinement**: The "Senior Engineering Recruiter" agent does not just read the text; it reads the output of the "ATS Scanner" agent first, mimicking human collaborative workflows.
-
-### 8.3 Mitigating Hallucinations via "Link-First" Verification
-The most significant theoretical contribution of DocMind is its "Link-First" verification methodology. 
-When verifying authenticity, generic agents search the open web, often finding namesakes (people with the same name) and flagging false negatives. DocMind forces the agent to extract the user's *provided* links (LinkedIn, GitHub) from the document and scrape those specific domains first. This creates a grounded verification loop anchored in the user's self-declared digital footprint, drastically reducing hallucinated conflicts.
-
----
-
-## 9. Comprehensive Deployment Guide
-
-### 9.1 Prerequisites
-- Python 3.10 or higher.
-- Node.js 18 or higher.
-- A Supabase Project (PostgreSQL).
-- A Pinecone Index (Dimension: 768 for standard embeddings).
-- Google Gemini API Keys.
-
-### 9.2 Environment Configuration
+### 7.2 Environment Variable Configuration
 Create a `.env` file in the `backend/` directory:
 
 ```bash
 # Core AI Intelligence
 GOOGLE_API_KEY1=AIzaSyYourKeyHere...
-GOOGLE_API_KEY2=AIzaSyOptionalRotationKey...
+GOOGLE_API_KEY2=AIzaSyOptionalRotationKey... # Crucial for failover
 
 # Vector Database (RAG)
 PINECONE_API_KEY=your_pinecone_key
-PINECONE_ENV=us-east-1
 PINECONE_INDEX_NAME=docmind-workspace
 
-# Relational Persistence
+# Relational Persistence (Supabase)
 DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT_ID].supabase.co:5432/postgres
 JWT_SECRET=your_jwt_signing_secret
-
-# Optional Configuration
-MAX_THREADS=4
-DEBUG_MODE=False
 ```
 
-### 9.3 Backend Setup (Windows / Linux / macOS)
-Open a terminal and execute the following:
-
+### 7.3 Backend Deployment (FastAPI)
 ```bash
-# Navigate to backend directory
+# Navigate to backend
 cd backend
 
-# Create a virtual environment
+# Create and activate virtual environment
 python -m venv venv
-
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS / Linux:
-source venv/bin/activate
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Start the FastAPI Server
+# Start the uvicorn server
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-The API documentation will be available at `http://localhost:8000/docs`.
+The interactive Swagger API documentation will be instantly available at `http://localhost:8000/docs`.
 
-### 9.4 Frontend Setup
-Open a new terminal window:
-
+### 7.4 Frontend Deployment (Vite + React)
 ```bash
-# Navigate to frontend directory
+# Navigate to frontend
 cd frontend
 
 # Install Node modules
@@ -383,37 +274,20 @@ Access the application at `http://localhost:5173`.
 
 ---
 
-## 10. Testing & Quality Assurance
+## 8. Testing & Quality Assurance
 
-### 10.1 Backend Testing (PyTest)
-DocMind includes a suite of unit tests for agent logic.
-To run the tests:
-```bash
-pytest backend/tests/
-```
-Key areas tested:
-- **API Key Rotator**: Ensures the system successfully switches to `GOOGLE_API_KEY2` when `GOOGLE_API_KEY1` throws an exception.
-- **Tool Mocking**: The `web_search` tool is mocked to return deterministic HTML strings to verify the agent's extraction logic without consuming API quotas.
+### 8.1 Backend Verification
+DocMind is built to handle failure gracefully.
+- **Failover Testing**: The `APIKeyRotator` is tested by intentionally providing an expired API key as `GOOGLE_API_KEY1` and a valid key as `GOOGLE_API_KEY2`. The system must seamlessly catch the 401 error, rotate the index, and re-attempt the CrewAI execution without returning an HTTP 500 to the client.
+- **Concurrent Request Limits**: Because CrewAI agents are computationally heavy, FastAPI limits maximum active worker threads to prevent out-of-memory (OOM) errors during simultaneous agent dispatches.
 
-### 10.2 Frontend Testing (Vitest & React Testing Library)
-To run frontend tests:
-```bash
-npm run test
-```
-Ensures that the Context API correctly hydrates the UI when switching tabs and that the D3.js physics engine initializes without DOM errors.
-
----
-
-## 11. Future Roadmap
-
-- **Phase 1 (Current)**: Text and PDF support, 9 Agentic AI features, Supabase Caching.
-- **Phase 2 (Q3 2026)**: Introduction of **Vision Agents**. The ability to analyze charts, diagrams, and OCR scanned handwritten documents directly within the PDFs.
-- **Phase 3 (Q4 2026)**: **Multi-Document Synthesis**. Allowing the Research Agent to cross-reference multiple uploaded documents simultaneously to find contradictions across a corpus of literature.
-- **Phase 4 (2027)**: Fully autonomous enterprise deployments with custom-trained local LLMs (Llama 3 / Mistral) replacing the Gemini dependency for air-gapped security environments.
+### 8.2 Frontend UI Audits
+- **Responsive Layouts**: The UI relies heavily on Flexbox and Grid. The `Paper Analyzer` and `Research Agent` are specifically optimized (`max-w-[1600px]`) to ensure ultra-wide monitor users do not experience left-shifted or collapsed grid panels.
+- **Accessibility**: All interactive elements utilize semantic HTML to ensure screen reader compatibility, and contrasting colors (Emerald, Amber, Red) are used to dictate system status (Verified vs. Unverified claims).
 
 ---
 
 ## 👤 Author & Maintainer
 **Siddhant**
 
-*Designed and engineered for the era of high-fidelity, verified, and autonomous research. DocMind represents the shift from passive text retrieval to active, agentic intelligence.*
+*Designed and engineered for the era of high-fidelity, verified, and autonomous research. DocMind represents the definitive shift from passive text retrieval to active, agentic intelligence.*
