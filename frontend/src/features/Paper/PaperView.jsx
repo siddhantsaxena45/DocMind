@@ -62,7 +62,7 @@ export default function PaperView({ documentId, userId }) {
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
       <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar min-h-0 w-full">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 pb-8 border-b border-white/5">
             <div>
               <div className="flex items-center gap-3 mb-3">
@@ -92,8 +92,7 @@ export default function PaperView({ documentId, userId }) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-             <div className="lg:col-span-8 space-y-8">
+          <div className="w-full">
                 <AnimatePresence mode="wait">
                   {loading ? (
                     <motion.div 
@@ -151,7 +150,7 @@ export default function PaperView({ documentId, userId }) {
                           <motion.div variants={item} className="glass-card p-6 md:p-8 border-l-4 border-l-emerald-500/50">
                              <div className="flex items-center gap-3 mb-6">
                                 <ArrowRightCircle className="w-5 h-5 text-emerald-400" />
-                                <h3 className="text-sm font-black text-white uppercase tracking-widest text-emerald-200/80">Future Scope</h3>
+                                <h3 className="text-sm font-black uppercase tracking-widest text-emerald-200/80">Future Scope</h3>
                              </div>
                              <p className="text-slate-300 leading-relaxed text-[14px] md:text-[15px] font-medium">
                                 {data.future_scope || "Future scope not defined."}
@@ -202,7 +201,6 @@ export default function PaperView({ documentId, userId }) {
                     </motion.div>
                   )}
                 </AnimatePresence>
-             </div>
           </div>
         </div>
       </div>

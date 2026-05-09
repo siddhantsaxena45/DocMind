@@ -39,8 +39,8 @@ export default function ResearchView() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col p-6 md:p-10 min-h-0">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 pb-8 border-b border-white/5 shrink-0">
+      <div className="max-w-[1600px] mx-auto w-full flex-1 flex flex-col p-4 md:p-6 min-h-0">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 pb-4 border-b border-white/5 shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-brand-primary/10 rounded-lg">
@@ -48,8 +48,8 @@ export default function ResearchView() {
               </div>
               <span className="text-[10px] font-bold text-brand-primary uppercase tracking-[0.3em]">Global Intelligence</span>
             </div>
-            <h2 className="text-4xl font-bold text-white tracking-tight">AI Research Agent</h2>
-            <p className="text-slate-400 mt-2 text-sm">Deep-web synthesis and source credibility auditing for any research domain.</p>
+            <h2 className="text-3xl font-bold text-white tracking-tight">AI Research Agent</h2>
+            <p className="text-slate-400 mt-1 text-sm">Deep-web synthesis and source credibility auditing for any research domain.</p>
           </div>
           
           <div className="flex items-center gap-6">
@@ -63,21 +63,21 @@ export default function ResearchView() {
           </div>
         </div>
 
-        <form onSubmit={handleSearch} className="mb-12 relative max-w-4xl mx-auto w-full group">
+        <form onSubmit={handleSearch} className="mb-6 relative max-w-5xl mx-auto w-full group shrink-0">
           <div className="absolute inset-0 bg-brand-primary/5 blur-3xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
           <input 
             type="text" 
             value={topic}
             onChange={e => setTopic(e.target.value)}
             placeholder="Search complex engineering topics or academic questions..." 
-            className="w-full glass-input pl-8 pr-20 py-6 text-white focus:border-brand-primary/50 shadow-2xl text-xl relative z-10 font-medium"
+            className="w-full glass-input pl-6 pr-16 py-4 text-white focus:border-brand-primary/50 shadow-2xl text-lg relative z-10 font-medium"
           />
           <button 
             type="submit" 
             disabled={!topic.trim() || loading}
-            className="absolute right-3 top-3 bottom-3 bg-brand-primary hover:bg-brand-primary/80 text-white rounded-2xl px-6 flex items-center justify-center disabled:opacity-50 transition-all shadow-xl shadow-brand-primary/20 z-20"
+            className="absolute right-2 top-2 bottom-2 bg-brand-primary hover:bg-brand-primary/80 text-white rounded-xl px-5 flex items-center justify-center disabled:opacity-50 transition-all shadow-xl shadow-brand-primary/20 z-20"
           >
-            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6" />}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
           </button>
         </form>
 
@@ -111,10 +111,10 @@ export default function ResearchView() {
               key="results"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-20 pr-2"
+              className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-20 pr-4"
             >
-              <div className="flex flex-col lg:flex-row gap-10">
-                <div className="flex-1 glass-card p-8 md:p-12 shadow-inner relative h-fit">
+              <div className="flex flex-col lg:flex-row gap-12">
+                <div className="flex-1 glass-card p-10 md:p-16 shadow-inner relative h-fit">
                   <div className="flex items-center gap-4 mb-10 pb-6 border-b border-white/5">
                      <div className="p-3 bg-indigo-500/10 rounded-2xl">
                         <FileText className="w-6 h-6 text-indigo-400" />
@@ -130,7 +130,7 @@ export default function ResearchView() {
                   </div>
                 </div>
 
-                <div className="w-full lg:w-[400px] flex flex-col gap-8 shrink-0">
+                <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col gap-8 shrink-0">
                   <section>
                      <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
                        <ShieldCheck className="w-4 h-4 text-emerald-500" /> Source Integrity

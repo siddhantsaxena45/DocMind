@@ -171,7 +171,7 @@ export default function AuthenticityView({ documentId, userId }) {
                   <div className="p-2 bg-amber-500/10 rounded-lg">
                     <AlertTriangle className="w-4 h-4 text-amber-500" />
                   </div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-widest text-amber-200/60">Anomalies & Unverified Points</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-amber-200/60">Anomalies & Unverified Points</h3>
                 </div>
 
                 <div className="space-y-6">
