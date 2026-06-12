@@ -17,7 +17,7 @@ export default function CodeGenView({ documentId }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:8000/tools/code?document_id=${documentId || ""}&user_id=testuser`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/tools/code?document_id=${documentId || ""}&user_id=testuser`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

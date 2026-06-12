@@ -7,6 +7,7 @@ load_dotenv()
 class Settings(BaseSettings):
     PROJECT_NAME: str = "DocMind API"
     VERSION: str = "3.0.0"
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
     
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")

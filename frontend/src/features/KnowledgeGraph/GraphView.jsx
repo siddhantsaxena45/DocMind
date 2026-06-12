@@ -38,7 +38,7 @@ export default function GraphView({ documentId, userId }) {
     setLoading(true);
     setSelectedItem(null);
     try {
-      const res = await fetch(`http://localhost:8000/document/${documentId}/graph?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/document/${documentId}/graph?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });

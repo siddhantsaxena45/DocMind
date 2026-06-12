@@ -12,7 +12,7 @@ export default function AuthenticityView({ documentId, userId }) {
     if (!documentId) return;
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/document/${documentId}/verify?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/document/${documentId}/verify?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });

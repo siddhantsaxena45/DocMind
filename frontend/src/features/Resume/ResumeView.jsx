@@ -14,7 +14,7 @@ export default function ResumeView({ documentId, userId }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:8000/document/${documentId}/resume-critique?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/document/${documentId}/resume-critique?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job_description: jobDescription }),

@@ -13,7 +13,7 @@ export default function PaperView({ documentId, userId }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:8000/document/${documentId}/paper-analysis?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/document/${documentId}/paper-analysis?user_id=${encodeURIComponent(userId)}&force=${force ? 'true' : 'false'}`, {
         method: "POST",
       });
       const json = await res.json();

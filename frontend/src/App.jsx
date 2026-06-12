@@ -41,7 +41,7 @@ function App() {
 
   const loadDocuments = async (a = auth) => {
     try {
-      const res = await fetch(`http://localhost:8000/documents/${a.userId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/documents/${a.userId}`, {
         headers: { ...authHeader(a.token) },
       });
       const data = await res.json();
@@ -62,7 +62,7 @@ function App() {
     fd.append("user_id", auth.userId);
     fd.append("file", file);
     try {
-      const res = await fetch("http://localhost:8000/upload", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, {
         method: "POST",
         headers: { ...authHeader(auth.token) },
         body: fd,
@@ -85,7 +85,7 @@ function App() {
   const handleDelete = async (docId) => {
     if (!window.confirm("Delete this document?")) return;
     try {
-      const res = await fetch(`http://localhost:8000/documents/${docId}?user_id=${auth.userId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/documents/${docId}?user_id=${auth.userId}`, {
         method: "DELETE"
       });
       if (res.ok) {

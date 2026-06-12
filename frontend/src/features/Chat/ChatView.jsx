@@ -20,7 +20,7 @@ export default function ChatView({ documentId, userId }) {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:8000/query/history/${documentId}?user_id=${userId}`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/query/history/${documentId}?user_id=${userId}`);
         if (res.ok) {
           const data = await res.json();
           setMessages(data.history || []);
@@ -46,7 +46,7 @@ export default function ChatView({ documentId, userId }) {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8000/query", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
