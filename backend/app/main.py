@@ -17,7 +17,7 @@ def _startup():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS != "*" else ["*"],
+    allow_origins=["*"] if settings.CORS_ORIGINS.strip() == "*" else [origin.strip().strip("'").strip('"').rstrip("/") for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
