@@ -15,6 +15,8 @@ async def upload_document(
 
     content = await file.read()
     text = pdf_service.extract_text_from_bytes(content)
+    if text:
+        text = text.replace('\x00', '')
 
     if not text.strip():
         raise HTTPException(status_code=422, detail="Could not extract text from PDF")
