@@ -139,7 +139,18 @@ Text to verify:
                     process=Process.sequential
                 )
                 
-                result = crew.kickoff()
+                import time
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        result = crew.kickoff()
+                        break
+                    except Exception as inner_e:
+                        if '503' in str(inner_e) and attempt < max_retries - 1:
+                            print(f"503 High Demand Error. Retrying in {2 ** attempt} seconds...")
+                            time.sleep(2 ** attempt)
+                        else:
+                            raise inner_e
                 res = str(getattr(result, 'raw', str(result)))
                 
                 if "---JSON_START---" in res and "---JSON_END---" in res:
@@ -178,7 +189,18 @@ Return ONLY a valid JSON object with the following structure bounded by ---JSON_
 
 Text: {text[:5000]}
 """
-                res = fallback_llm.invoke(fallback_prompt).content
+                import time
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        res = fallback_llm.invoke(fallback_prompt).content
+                        break
+                    except Exception as inner_e:
+                        if '503' in str(inner_e) and attempt < max_retries - 1:
+                            print(f"503 High Demand Error on fallback. Retrying in {2 ** attempt} seconds...")
+                            time.sleep(2 ** attempt)
+                        else:
+                            raise inner_e
                 if "---JSON_START---" in res and "---JSON_END---" in res:
                     res = res.split("---JSON_START---")[1].split("---JSON_END---")[0].strip()
                 elif res.strip().startswith("```json"): 
