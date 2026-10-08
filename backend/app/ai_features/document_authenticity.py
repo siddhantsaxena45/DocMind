@@ -112,6 +112,10 @@ Step 6: CONFLICT RESOLUTION.
     - Favor the document's claims if they are more recent (e.g., a 2026 graduation target implies a current GPA, which may differ from a 2024 archive).
     - Match specific usernames/IDs from the [DOC_LINKS] (e.g., 'Siddhant-0207') to ensure you aren't verifying the wrong person.
 
+CRITICAL RULES FOR SCORING AND VERIFICATION:
+- EXCLUDE LINKEDIN & LEETCODE: DO NOT attempt to scrape or verify 'linkedin.com' or 'leetcode.com' links. These sites block automated access. Assume these URLs are valid and DO NOT lower the score or mark them as unverified.
+- BE LENIENT WITH SCHOOLS & DEPARTMENTS: Local schools (e.g., 'Shri Gulab Rai Montessori') and specific university departments/cells (e.g., 'DRID', 'JIIT', 'JUET') often have weak web presence. If web search yields partial matches, sister organizations, or related terms, accept them as verified. DO NOT penalize the score for these.
+
 Return ONLY a valid JSON object with the following strictly enforced structure bounded by ---JSON_START--- and ---JSON_END---:
 ---JSON_START---
 {{

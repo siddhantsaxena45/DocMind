@@ -14,7 +14,7 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
 
     content = await file.read()
-    text = pdf_service.extract_text_from_bytes(content)
+    text, links_text = pdf_service.extract_text_from_bytes(content)
     if text:
         text = text.replace('\x00', '')
 
@@ -41,15 +41,19 @@ async def upload_document(
         cur.execute("DELETE FROM chat_history WHERE document_id = %s", (old_id,))
         cur.execute("DELETE FROM documents WHERE id = %s", (old_id,))
         conn.commit()
+        
+    full_text_for_db = text
+    if links_text:
+        full_text_for_db = text + links_text
 
     cur.execute(
         "INSERT INTO documents (user_id, filename, storage_path, full_text) VALUES (%s, %s, %s, %s) RETURNING id",
-        (user_id, file.filename, "uploaded_via_api", text),
+        (user_id, file.filename, "uploaded_via_api", full_text_for_db),
     )
     document_id = str(cur.fetchone()[0])
     conn.commit()
 
-    docs = pdf_service.chunk_text(text, user_id, file.filename, document_id)
+    docs = pdf_service.chunk_text(text, links_text, user_id, file.filename, document_id)
 
     try:
         vector_service.vector_db.add_documents(docs, namespace=user_id, batch_size=20)
