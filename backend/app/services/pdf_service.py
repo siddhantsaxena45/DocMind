@@ -16,18 +16,27 @@ class PDFService:
                 text += page_text + "\n"
             
             # 2. Extract hidden hyperlinks from annotations
-            if "/Annots" in page:
-                for annot in page["/Annots"]:
-                    obj = annot.get_object()
+            annots = page.annotations if hasattr(page, "annotations") else None
+            if annots is None and "/Annots" in page:
+                annots_obj = page["/Annots"]
+                annots = annots_obj.get_object() if hasattr(annots_obj, "get_object") else annots_obj
+            
+            if annots:
+                for annot in annots:
+                    obj = annot.get_object() if hasattr(annot, "get_object") else annot
                     if obj.get("/Subtype") == "/Link" and "/A" in obj:
                         action = obj["/A"]
+                        action = action.get_object() if hasattr(action, "get_object") else action
+                        
                         if "/URI" in action:
                             uri = action["/URI"]
+                            uri = uri.get_object() if hasattr(uri, "get_object") else uri
+                            
                             if uri and isinstance(uri, str) and uri not in links:
                                 links.append(uri)
                             elif uri and isinstance(uri, bytes):
                                 try:
-                                    uri_str = uri.decode('utf-8')
+                                    uri_str = uri.decode('utf-8', errors='ignore')
                                     if uri_str not in links:
                                         links.append(uri_str)
                                 except:
