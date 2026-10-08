@@ -21,7 +21,7 @@ def web_search(query: str) -> str:
 
 @tool("Read Webpage Content")
 def read_web_page(url: str) -> str:
-    """Fetches and extracts the main text content from a given URL for deep verification. Use this on personal profiles (LinkedIn, LeetCode, GitHub) if found in the document."""
+    """Fetches and extracts the main text content from a given URL for deep verification. Use this on personal profiles (e.g., GitHub, Portfolio) if found in the document."""
     try:
         import httpx
         import random
@@ -83,7 +83,7 @@ class AuthenticityChecker:
                     goal="Verify claims by prioritizing URLs found within the document itself, then cross-referencing with the live web.",
                     backstory="""You are a skeptical yet fair investigative auditor. 
 Your primary directive is to verify claims using the most RECENT and RELEVANT sources.
-CRITICAL: If the document provides a link (LinkedIn, Portfolio, LeetCode, GitHub), you MUST visit and read that link FIRST. 
+CRITICAL: If the document provides a link (Portfolio, GitHub), you MUST visit and read that link FIRST. 
 Personal profiles provided by the user are the PRIMARY source of truth for their specific achievements.
 Be aware of 'Conflict vs Evolution'—a '9.09 CGPA' in a 2026/2027 document IS NOT contradicted by an 8.2 CGPA found in an older 2024 web source.""",
                     verbose=False,
@@ -98,25 +98,26 @@ Be aware of 'Conflict vs Evolution'—a '9.09 CGPA' in a 2026/2027 document IS N
                 
                 verify_task = Task(
                     description=f"""
-Step 1: EXTRACT LINKS. Scan the provided text, especially the '[DOC_LINKS]' section at the end, for any URLs (LinkedIn, GitHub, LeetCode, Portfolio, YouTube, etc.).
-Step 2: IDENTIFY CLAIMS. Extract 3-5 of the most significant factual claims (Education, GPA, Projects, Internships).
-Step 3: LINK-FIRST VERIFICATION. For EACH claim:
-    a) Check Step 1 for a matching link (e.g., if the claim is about LeetCode, find the LeetCode URL in '[DOC_LINKS]').
+Step 1: EXTRACT LINKS. Scan the provided text, especially the '[DOC_LINKS]' section at the end, for any URLs (GitHub, Portfolio, etc.).
+Step 2: IDENTIFY CLAIMS & ENTITIES. Extract 3-5 of the most significant factual claims (Education, GPA, Projects, Internships). Also, extract key entities mentioned (e.g., college names, company names, certifications, hackathons, locations, YouTube channels).
+Step 3: ENTITY REALITY CHECK. Use 'DuckDuckGo Web Search' to verify that the extracted entities actually exist in the real world (no need to deep scrape, just check search snippets).
+Step 4: LINK-FIRST VERIFICATION. For EACH claim:
+    a) Check Step 1 for a matching link (e.g., if the claim is about a project, find the GitHub URL in '[DOC_LINKS]').
     b) Use 'Read Webpage Content' on that specific URL FIRST. If the link confirms the claim, mark as "Verified".
     c) ONLY if no direct link exists or if it fails to confirm the claim, use 'DuckDuckGo Web Search'.
-Step 4: CONFLICT RESOLUTION. 
+Step 5: CONFLICT RESOLUTION. 
     - Favor the document's claims if they are more recent (e.g., a 2026 graduation target implies a current GPA, which may differ from a 2024 archive).
     - Match specific usernames/IDs from the [DOC_LINKS] (e.g., 'Siddhant-0207') to ensure you aren't verifying the wrong person.
 
 Return ONLY a valid JSON object with the following strictly enforced structure bounded by ---JSON_START--- and ---JSON_END---:
 ---JSON_START---
 {{
-    "score": [An integer 0-100. Be fair but thorough. 100 if all core claims are verified by document links.],
+    "score": [An integer 0-100. Be fair but thorough. Lower the score if claims are unverified or if extracted entities do not actually exist.],
     "verified_sources": [
-        {{"claim": "The exact claim", "sources": ["https://link-from-document.com"], "status": "Verified", "evidence_snippet": "Direct proof found on the user's profile."}}
+        {{"claim": "The exact claim or entity existence (e.g., 'XYZ College exists')", "sources": ["https://link-from-document.com"], "status": "Verified", "evidence_snippet": "Direct proof found on the user's profile or search snippet."}}
     ],
     "unverified_claims": [
-        {{"claim": "The suspicious claim", "reason": "Reason why even the user's own links or web search couldn't confirm this.", "status": "Unverified"}}
+        {{"claim": "The suspicious claim or fake entity", "reason": "Reason why even the user's own links or web search couldn't confirm this.", "status": "Unverified"}}
     ]
 }}
 ---JSON_END---
@@ -160,7 +161,7 @@ Text to verify:
             if keys:
                 fallback_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=keys[0], temperature=0.1)
                 fallback_prompt = f"""
-Analyze the following text objectively and extract up to 3 factual claims. Categorize them and assign a reliability score.
+Analyze the following text objectively and extract up to 3 factual claims as well as key entities (colleges, companies, etc.). Categorize them and assign a reliability score, considering if these entities actually exist.
 Return ONLY a valid JSON object with the following structure bounded by ---JSON_START--- and ---JSON_END---:
 ---JSON_START---
 {{
