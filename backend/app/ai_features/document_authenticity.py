@@ -101,23 +101,26 @@ Be aware of 'Conflict vs Evolution'—a '9.09 CGPA' in a 2026/2027 document IS N
 Step 1: EXTRACT LINKS. Scan the provided text, especially the '[DOC_LINKS]' section at the end, for any URLs (GitHub, Portfolio, etc.).
 Step 2: IDENTIFY CLAIMS & ENTITIES. Extract 3-5 of the most significant factual claims (Education, GPA, Projects, Internships). Also, extract key entities mentioned (e.g., college names, company names, certifications, hackathons, locations, YouTube channels).
 Step 3: ENTITY REALITY CHECK. Use 'DuckDuckGo Web Search' to verify that the extracted entities actually exist in the real world (no need to deep scrape, just check search snippets).
-Step 4: LINK-FIRST VERIFICATION. For EACH claim:
+Step 4: SEMANTIC ORIGINALITY CHECK FOR PROJECTS. For each major project, do not rely on the project's name (as students often change it). Instead, analyze its core semantics: architecture, primary features, and tech stack (e.g., "E-commerce with Stripe and Next.js" or "Real-time chat with Socket.io").
+    a) Use 'DuckDuckGo Web Search' to query these core semantic features along with keywords like "tutorial", "clone", or "github template".
+    b) Semantically compare the search results with the resume's project description to determine if the project is a common, unmodified tutorial or heavily copied from a standard GitHub repo.
+Step 5: LINK-FIRST VERIFICATION. For EACH claim:
     a) Check Step 1 for a matching link (e.g., if the claim is about a project, find the GitHub URL in '[DOC_LINKS]').
     b) Use 'Read Webpage Content' on that specific URL FIRST. If the link confirms the claim, mark as "Verified".
     c) ONLY if no direct link exists or if it fails to confirm the claim, use 'DuckDuckGo Web Search'.
-Step 5: CONFLICT RESOLUTION. 
+Step 6: CONFLICT RESOLUTION. 
     - Favor the document's claims if they are more recent (e.g., a 2026 graduation target implies a current GPA, which may differ from a 2024 archive).
     - Match specific usernames/IDs from the [DOC_LINKS] (e.g., 'Siddhant-0207') to ensure you aren't verifying the wrong person.
 
 Return ONLY a valid JSON object with the following strictly enforced structure bounded by ---JSON_START--- and ---JSON_END---:
 ---JSON_START---
 {{
-    "score": [An integer 0-100. Be fair but thorough. Lower the score if claims are unverified or if extracted entities do not actually exist.],
+    "score": [An integer 0-100. Be fair but thorough. Lower the score if claims are unverified, if entities do not exist, or if projects are highly likely to be copied tutorials/templates.],
     "verified_sources": [
         {{"claim": "The exact claim or entity existence (e.g., 'XYZ College exists')", "sources": ["https://link-from-document.com"], "status": "Verified", "evidence_snippet": "Direct proof found on the user's profile or search snippet."}}
     ],
     "unverified_claims": [
-        {{"claim": "The suspicious claim or fake entity", "reason": "Reason why even the user's own links or web search couldn't confirm this.", "status": "Unverified"}}
+        {{"claim": "The suspicious claim, fake entity, or unoriginal tutorial project", "reason": "Reason why even the user's own links or web search couldn't confirm this, or why it matches a common tutorial.", "status": "Unverified or Unoriginal"}}
     ]
 }}
 ---JSON_END---
