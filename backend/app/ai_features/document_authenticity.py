@@ -64,7 +64,7 @@ def read_web_page(url: str) -> str:
         content = trafilatura.extract(html_content)
         if not content:
             return f"Could not extract meaningful text from {url}. The page might be JavaScript-heavy or protected."
-        return content[:8000] 
+        return content[:2000] 
     except Exception as e:
         return f"Error reading page {url}: {e}"
 
@@ -90,8 +90,8 @@ Be aware of 'Conflict vs Evolution'—a '9.09 CGPA' in a 2026/2027 document IS N
                     allow_delegation=False,
                     tools=[web_search, read_web_page],
                     llm=llm,
-                    max_iter=12,        
-                    max_rpm=15,        
+                    max_iter=5,        
+                    max_rpm=10,        
                     max_retry_limit=2,
                     max_execution_time=250
                 )
@@ -126,7 +126,7 @@ Return ONLY a valid JSON object with the following strictly enforced structure b
 ---JSON_END---
 
 Text to verify:
-{text[:10000]}
+{text[:3000]}
 """,
                     expected_output="A strictly formatted JSON text bounded by ---JSON_START--- and ---JSON_END--- containing 'score', 'verified_sources', and 'unverified_claims'.",
                     agent=fact_checker
@@ -147,8 +147,8 @@ Text to verify:
                         break
                     except Exception as inner_e:
                         if '503' in str(inner_e) and attempt < max_retries - 1:
-                            print(f"503 High Demand Error. Retrying in {2 ** attempt} seconds...")
-                            time.sleep(2 ** attempt)
+                            print(f"503 High Demand Error. Retrying in {5 * (attempt + 1)} seconds...")
+                            time.sleep(5 * (attempt + 1))
                         else:
                             raise inner_e
                 res = str(getattr(result, 'raw', str(result)))
@@ -187,7 +187,7 @@ Return ONLY a valid JSON object with the following structure bounded by ---JSON_
 }}
 ---JSON_END---
 
-Text: {text[:5000]}
+Text: {text[:3000]}
 """
                 import time
                 max_retries = 3
@@ -197,8 +197,8 @@ Text: {text[:5000]}
                         break
                     except Exception as inner_e:
                         if '503' in str(inner_e) and attempt < max_retries - 1:
-                            print(f"503 High Demand Error on fallback. Retrying in {2 ** attempt} seconds...")
-                            time.sleep(2 ** attempt)
+                            print(f"503 High Demand Error on fallback. Retrying in {5 * (attempt + 1)} seconds...")
+                            time.sleep(5 * (attempt + 1))
                         else:
                             raise inner_e
                 if "---JSON_START---" in res and "---JSON_END---" in res:
