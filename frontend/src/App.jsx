@@ -1,183 +1,262 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import LoginView from "./components/LoginView";
 import ChatView from "./features/Chat/ChatView";
-import InsightsView from "./features/DocumentInsights/InsightsView";
-import AuthenticityView from "./features/Authenticity/AuthenticityView";
-import CodeGenView from "./features/CodeGeneration/CodeGenView";
-import ResearchView from "./features/Research/ResearchView";
-import ResumeView from "./features/Resume/ResumeView";
-import PaperView from "./features/Paper/PaperView";
-import GraphView from "./features/KnowledgeGraph/GraphView";
-import FlashcardView from "./features/Flashcards/FlashcardView";
-import { UploadCloud, Menu, User, LogOut } from "lucide-react";
-import { loadAuth, saveAuth, clearAuth, authHeader } from "./auth";
+import ShareModal from "./components/ShareModal";
+import UploadModal from "./components/UploadModal";
+import SharedChatView from "./components/SharedChatView";
+import { loadAuth, saveAuth, clearAuth } from "./auth";
+import { api } from "./api";
 
 function App() {
-  const [currentMode, setCurrentMode] = useState("chat");
-  const [documents, setDocuments] = useState([]);
-  const [activeDoc, setActiveDoc] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [auth, setAuth] = useState(() => loadAuth());
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [sharedRouteToken, setSharedRouteToken] = useState(null);
 
+  // Check URL path for shared links: /share/:token
   useEffect(() => {
-    if (auth?.token) loadDocuments(auth);
+    const path = window.location.pathname;
+    if (path.startsWith("/share/")) {
+      const token = path.replace("/share/", "").trim();
+      if (token) {
+        setSharedRouteToken(token);
+      }
+    }
+
+    const onPopState = () => {
+      const p = window.location.pathname;
+      if (p.startsWith("/share/")) {
+        setSharedRouteToken(p.replace("/share/", "").trim());
+      } else {
+        setSharedRouteToken(null);
+      }
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  const onAuth = (nextAuth) => {
-    saveAuth(nextAuth);
-    setAuth(nextAuth);
-    loadDocuments(nextAuth);
+  // Listen for auth-expired event from API client
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      clearAuth();
+      setAuth(null);
+    };
+    window.addEventListener("auth-expired", handleAuthExpired);
+    return () => window.removeEventListener("auth-expired", handleAuthExpired);
+  }, []);
+
+  // Initial load when logged in
+  useEffect(() => {
+    if (auth?.token && !sharedRouteToken) {
+      loadInitialData();
+    }
+  }, [auth?.token, sharedRouteToken]);
+
+  const loadInitialData = async () => {
+    try {
+      const [convs, docsData] = await Promise.all([
+        api.conversations.list(),
+        api.documents.list()
+      ]);
+
+      setConversations(convs);
+      setDocuments(docsData.documents || []);
+
+      if (convs.length > 0) {
+        setActiveConversationId(convs[0].id);
+      } else {
+        // Automatically create initial New Chat if user has no chats
+        const newConv = await api.conversations.create({ title: "New Chat" });
+        setConversations([newConv]);
+        setActiveConversationId(newConv.id);
+      }
+    } catch (err) {
+      console.error("Failed to load initial workspace data:", err);
+    }
   };
 
-  const logout = () => {
+  const handleLogin = (newAuth) => {
+    saveAuth(newAuth);
+    setAuth(newAuth);
+  };
+
+  const handleLogout = () => {
     clearAuth();
     setAuth(null);
+    setConversations([]);
+    setActiveConversationId(null);
     setDocuments([]);
-    setActiveDoc(null);
   };
 
-  const loadDocuments = async (a = auth) => {
+  // Conversation handlers
+  const handleCreateConversation = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/documents/${a.userId}`, {
-        headers: { ...authHeader(a.token) },
-      });
-      const data = await res.json();
-      setDocuments(data.documents);
-      if (data.documents.length > 0 && !activeDoc) {
-        setActiveDoc(data.documents[0].id);
-      }
+      const newConv = await api.conversations.create({ title: "New Chat" });
+      setConversations((prev) => [newConv, ...prev]);
+      setActiveConversationId(newConv.id);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to create conversation:", err);
     }
   };
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
-    const fd = new FormData();
-    fd.append("user_id", auth.userId);
-    fd.append("file", file);
+  const handleSelectConversation = (id) => {
+    setActiveConversationId(id);
+  };
+
+  const handleRenameConversation = async (id, newTitle) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, {
-        method: "POST",
-        headers: { ...authHeader(auth.token) },
-        body: fd,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        await loadDocuments();
-        setActiveDoc(data.document_id);
-      } else {
-        alert("Upload error: " + data.detail);
-      }
+      await api.conversations.update(id, { title: newTitle });
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c))
+      );
     } catch (err) {
-      alert("Error: " + err.message);
-    } finally {
-      setUploading(false);
-      e.target.value = null;
+      console.error("Failed to rename conversation:", err);
     }
   };
 
-  const handleDelete = async (docId) => {
-    if (!window.confirm("Delete this document?")) return;
+  const handleDeleteConversation = async (id) => {
+    if (!window.confirm("Delete this conversation?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/documents/${docId}?user_id=${auth.userId}`, {
-        method: "DELETE"
+      await api.conversations.delete(id);
+      setConversations((prev) => {
+        const remaining = prev.filter((c) => c.id !== id);
+        if (activeConversationId === id) {
+          if (remaining.length > 0) {
+            setActiveConversationId(remaining[0].id);
+          } else {
+            handleCreateConversation();
+          }
+        }
+        return remaining;
       });
-      if (res.ok) {
-        setDocuments(prev => prev.filter(d => d.id !== docId));
-        if (activeDoc === docId) setActiveDoc(null);
-      }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to delete conversation:", err);
     }
   };
 
-  if (!auth?.token) return <LoginView onAuth={onAuth} />;
-
-  const getTitle = () => {
-    const titles = {
-      chat: "Document Chat",
-      insights: "Insights Dashboard",
-      authenticity: "Authenticity Checker",
-      research: "AI Research",
-      resume: "Resume Optimizer",
-      paper: "Paper Analyzer",
-      code: "Code Studio",
-      graph: "Knowledge Graph",
-      flashcards: "Flashcards"
-    };
-    return titles[currentMode] || "Dashboard";
+  const handleUpdateConversation = (id, updates) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
+    );
   };
+
+  // Document handlers
+  const handleUploadSuccess = async () => {
+    try {
+      const docsData = await api.documents.list();
+      setDocuments(docsData.documents || []);
+    } catch (err) {
+      console.error("Failed to refresh documents:", err);
+    }
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (!window.confirm("Delete this document from your knowledge base?")) return;
+    try {
+      await api.documents.delete(docId);
+      setDocuments((prev) => prev.filter((d) => d.id !== docId));
+      // Remove from any active filters
+      setConversations((prev) =>
+        prev.map((c) => ({
+          ...c,
+          selected_doc_ids: (c.selected_doc_ids || []).filter((id) => id !== docId)
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to delete document:", err);
+    }
+  };
+
+  const handleToggleDocFilter = async (docId) => {
+    const activeConv = conversations.find((c) => c.id === activeConversationId);
+    if (!activeConv) return;
+
+    const currentSelected = activeConv.selected_doc_ids || [];
+    const nextSelected = currentSelected.includes(docId)
+      ? currentSelected.filter((id) => id !== docId)
+      : [...currentSelected, docId];
+
+    try {
+      await api.conversations.update(activeConv.id, { selected_doc_ids: nextSelected });
+      handleUpdateConversation(activeConv.id, { selected_doc_ids: nextSelected });
+    } catch (err) {
+      console.error("Failed to toggle document filter:", err);
+    }
+  };
+
+  // Public shared conversation view
+  if (sharedRouteToken) {
+    return (
+      <SharedChatView
+        shareToken={sharedRouteToken}
+        onBackToApp={() => {
+          window.history.pushState({}, "", "/");
+          setSharedRouteToken(null);
+        }}
+      />
+    );
+  }
+
+  // Login view if not authenticated
+  if (!auth?.token) {
+    return <LoginView onAuth={handleLogin} />;
+  }
+
+  const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-bg-main selection:bg-brand-primary/20">
-      <Sidebar 
-        currentMode={currentMode} 
-        onSetMode={(mode) => { setCurrentMode(mode); setSidebarOpen(false); }} 
+    <div className="flex h-dvh w-full overflow-hidden bg-bg-main">
+      {/* Sidebar */}
+      <Sidebar
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onSelectConversation={handleSelectConversation}
+        onCreateConversation={handleCreateConversation}
+        onRenameConversation={handleRenameConversation}
+        onDeleteConversation={handleDeleteConversation}
         documents={documents}
-        activeDoc={activeDoc}
-        onSelectDoc={(id) => { setActiveDoc(id); setSidebarOpen(false); }}
-        onDeleteDoc={handleDelete}
+        selectedDocIds={activeConversation?.selected_doc_ids || []}
+        onToggleDocFilter={handleToggleDocFilter}
+        onDeleteDocument={handleDeleteDocument}
+        onOpenUploadModal={() => setUploadModalOpen(true)}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        user={auth}
+        onLogout={handleLogout}
       />
-      
-      <main className="flex-1 flex flex-col min-w-0 relative h-full">
-        <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 shrink-0 z-20">
-          <div className="flex items-center gap-3 md:gap-4">
-            <button 
-              className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-5 h-5 md:w-6 md:h-6" />
-            </button>
-            <div>
-              <h2 className="text-lg md:text-xl font-bold tracking-tight text-white leading-tight">{getTitle()}</h2>
-              <p className="text-[10px] md:text-xs text-slate-500 font-medium hidden sm:block">Welcome back, {auth.username}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 md:gap-3">
-            <label className={`cursor-pointer btn-primary px-3 md:px-4 py-2 text-xs md:text-sm ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-              <UploadCloud className="w-3.5 h-3.5 md:w-4 h-4" />
-              <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload PDF"}</span>
-              <input type="file" accept="application/pdf" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-            </label>
 
-            <div className="h-6 md:h-8 w-px bg-white/10 mx-1 md:mx-2 hidden sm:block" />
-
-            <div className="flex items-center gap-1.5 md:gap-2">
-               <button className="p-1.5 md:p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors" onClick={logout} title="Sign Out">
-                 <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-               </button>
-               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-linear-to-br from-brand-primary to-brand-secondary p-[1px] hidden sm:block">
-                 <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
-                   <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                 </div>
-               </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 min-h-0 relative m-2 md:m-4 bg-slate-900/40 rounded-3xl border border-white/5 overflow-hidden">
-          <div className="absolute inset-0 flex flex-col">
-            {currentMode === 'chat' && <ChatView documentId={activeDoc} userId={auth.userId} />}
-            {currentMode === 'insights' && <InsightsView documentId={activeDoc} userId={auth.userId} />}
-            {currentMode === 'authenticity' && <AuthenticityView documentId={activeDoc} userId={auth.userId} />}
-            {currentMode === 'code' && <CodeGenView documentId={activeDoc} userId={auth.userId} />}
-            {currentMode === 'research' && <ResearchView />}
-            {currentMode === 'resume' && <ResumeView documentId={activeDoc} userId={auth.userId} />}
-            {currentMode === 'paper' && <PaperView documentId={activeDoc} userId={auth.userId} />}
-            {currentMode === 'graph' && <GraphView documentId={activeDoc} userId={auth.userId} />}
-            {currentMode === 'flashcards' && <FlashcardView documentId={activeDoc} userId={auth.userId} />}
-          </div>
-        </div>
+      {/* Main Chat View */}
+      <main className="flex-1 flex flex-col min-w-0 h-full relative">
+        <ChatView
+          conversation={activeConversation}
+          onUpdateConversation={handleUpdateConversation}
+          onSidebarToggle={() => setSidebarOpen(true)}
+          onOpenShareModal={() => setShareModalOpen(true)}
+          onOpenUploadModal={() => setUploadModalOpen(true)}
+          documents={documents}
+        />
       </main>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        conversationId={activeConversation?.id}
+        conversationTitle={activeConversation?.title}
+      />
+
+      {/* Upload Modal */}
+      <UploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onUploadSuccess={handleUploadSuccess}
+      />
     </div>
   );
 }

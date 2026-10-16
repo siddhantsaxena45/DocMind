@@ -1,138 +1,382 @@
-import React from 'react';
-import { Layers, FileText, X, Settings2, Trash2, ChevronRight } from 'lucide-react';
-import { DOC_MODES, OTHER_MODES } from './aiModes';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo } from "react";
+import {
+  Plus, MessageSquare, Trash2, Edit2, Check, X, Search,
+  FileText, UploadCloud, ChevronDown, ChevronRight,
+  LogOut, User, Sparkles, Database, CheckSquare, Square
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function Sidebar({ currentMode, onSetMode, documents, activeDoc, onSelectDoc, onDeleteDoc, sidebarOpen, setSidebarOpen }) {
+export default function Sidebar({
+  conversations,
+  activeConversationId,
+  onSelectConversation,
+  onCreateConversation,
+  onRenameConversation,
+  onDeleteConversation,
+  documents,
+  selectedDocIds,
+  onToggleDocFilter,
+  onDeleteDocument,
+  onOpenUploadModal,
+  sidebarOpen,
+  setSidebarOpen,
+  user,
+  onLogout
+}) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editingConvId, setEditingConvId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [showDocs, setShowDocs] = useState(true);
+
+  // Filter conversations
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const q = searchQuery.toLowerCase();
+    return conversations.filter(c => c.title.toLowerCase().includes(q));
+  }, [conversations, searchQuery]);
+
+  // Group conversations by date (Today, Yesterday, Older)
+  const groupedConversations = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const groups = {
+      Today: [],
+      Yesterday: [],
+      "Previous 7 Days": [],
+      Older: []
+    };
+
+    filteredConversations.forEach(conv => {
+      const convDate = new Date(conv.updated_at || conv.created_at || Date.now());
+      if (convDate >= today) {
+        groups.Today.push(conv);
+      } else if (convDate >= yesterday) {
+        groups.Yesterday.push(conv);
+      } else if (convDate >= sevenDaysAgo) {
+        groups["Previous 7 Days"].push(conv);
+      } else {
+        groups.Older.push(conv);
+      }
+    });
+
+    return groups;
+  }, [filteredConversations]);
+
+  const startRename = (e, conv) => {
+    e.stopPropagation();
+    setEditingConvId(conv.id);
+    setEditTitle(conv.title);
+  };
+
+  const saveRename = (e, convId) => {
+    e.stopPropagation();
+    if (editTitle.trim()) {
+      onRenameConversation(convId, editTitle.trim());
+    }
+    setEditingConvId(null);
+  };
+
+  const cancelRename = (e) => {
+    e.stopPropagation();
+    setEditingConvId(null);
+  };
+
   return (
     <>
+      {/* Mobile backdrop */}
       <AnimatePresence>
         {sidebarOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
       </AnimatePresence>
-      
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-72 h-full bg-bg-main flex flex-col pt-6 pb-4 px-4
-        transform transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        md:relative md:translate-x-0 overflow-hidden
-      `}>
-        <div className="flex items-center justify-between gap-3 mb-10 px-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg shadow-brand-primary/20">
-              <Layers className="text-white w-6 h-6" />
+
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-76 md:w-80 h-full bg-slate-950 border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 overflow-hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Top Header & New Chat button */}
+        <div className="p-3.5 space-y-3 shrink-0 border-b border-white/5">
+          <div className="flex items-center justify-between px-2 pt-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-md">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-white tracking-tight text-base">DocMind RAG</span>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight leading-none">DocMind</h1>
-              <span className="text-[10px] text-brand-secondary font-bold uppercase tracking-widest">Premium AI</span>
-            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button className="md:hidden text-slate-400 hover:text-white p-2" onClick={() => setSidebarOpen(false)}>
-            <X className="w-6 h-6" />
+
+          {/* New Chat Button */}
+          <button
+            onClick={() => {
+              onCreateConversation();
+              setSidebarOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-white font-medium text-xs md:text-sm transition-all group shadow-sm active:scale-98"
+          >
+            <div className="flex items-center gap-2.5">
+              <Plus className="w-4 h-4 text-brand-primary group-hover:scale-110 transition-transform" />
+              <span>New Conversation</span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-mono hidden md:inline">Ctrl+K</span>
           </button>
+
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search chats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-brand-primary/50 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-8 pr-2 min-h-0">
-          <section>
-            <div className="mb-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">Core Experience</div>
-            <div className="space-y-1">
-              {DOC_MODES.map(mode => {
-                const Icon = mode.icon;
-                const isActive = currentMode === mode.id;
-                return (
-                  <button
-                    key={mode.id}
-                    onClick={() => onSetMode(mode.id)}
-                    className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-brand-primary/10 text-white shadow-sm shadow-brand-primary/5' 
-                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-1.5 rounded-lg transition-colors ${isActive ? 'bg-brand-primary/20' : 'bg-transparent'}`}>
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-brand-primary' : 'text-slate-400'}`} />
-                      </div>
-                      <span className="text-sm font-medium">{mode.label}</span>
-                    </div>
-                    {isActive && <ChevronRight className="w-4 h-4 text-brand-primary/50" />}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section>
-            <div className="mb-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] flex justify-between items-center">
-              <span>My Library</span>
-              <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{documents.length}</span>
-            </div>
-            <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
-              {documents.map(doc => (
-                <div 
-                  key={doc.id}
-                  onClick={() => onSelectDoc(doc.id)}
-                  className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 ${
-                    activeDoc === doc.id
-                      ? 'bg-slate-800 text-white border border-white/5' 
-                      : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 truncate">
-                    <FileText className={`w-4 h-4 shrink-0 ${activeDoc === doc.id ? 'text-brand-secondary' : ''}`} />
-                    <span className="text-xs font-medium truncate">{doc.filename}</span>
+        {/* Scrollable Center: Chat History & Documents */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4 custom-scrollbar min-h-0">
+          {/* Chat History Grouped */}
+          <div className="space-y-3">
+            {Object.entries(groupedConversations).map(([groupTitle, convs]) => {
+              if (convs.length === 0) return null;
+              return (
+                <div key={groupTitle} className="space-y-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {groupTitle}
                   </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onDeleteDoc(doc.id); }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-              {documents.length === 0 && (
-                <div className="text-slate-600 text-[11px] px-3 py-4 text-center border border-dashed border-white/5 rounded-xl">
-                  No documents found
-                </div>
-              )}
-            </div>
-          </section>
+                  {convs.map((conv) => {
+                    const isActive = conv.id === activeConversationId;
+                    const isEditing = editingConvId === conv.id;
 
-          <section>
-            <div className="mb-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Settings2 className="w-3.5 h-3.5" /> Advanced Tools
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => {
+                          onSelectConversation(conv.id);
+                          setSidebarOpen(false);
+                        }}
+                        className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
+                          isActive
+                            ? "bg-white/10 text-white font-medium shadow-xs"
+                            : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate flex-1 min-w-0 pr-1">
+                          <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-brand-primary" : "text-slate-500"}`} />
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveRename(e, conv.id);
+                                if (e.key === "Escape") cancelRename(e);
+                              }}
+                              autoFocus
+                              className="bg-slate-900 border border-brand-primary/50 text-white rounded px-1.5 py-0.5 text-xs w-full outline-none"
+                            />
+                          ) : (
+                            <span className="truncate">{conv.title}</span>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={(e) => saveRename(e, conv.id)}
+                                className="p-1 text-emerald-400 hover:bg-white/10 rounded"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={cancelRename}
+                                className="p-1 text-slate-400 hover:bg-white/10 rounded"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                              <button
+                                onClick={(e) => startRename(e, conv)}
+                                className="p-1 hover:text-white text-slate-500 hover:bg-white/10 rounded"
+                                title="Rename"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteConversation(conv.id);
+                                }}
+                                className="p-1 hover:text-red-400 text-slate-500 hover:bg-white/10 rounded"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            {conversations.length === 0 && (
+              <div className="p-6 text-center text-xs text-slate-600">
+                No conversations yet. Click "New Conversation" to begin.
+              </div>
+            )}
+          </div>
+
+          {/* Knowledge Base / Documents Section */}
+          <div className="pt-3 border-t border-white/5 space-y-2">
+            <div className="flex items-center justify-between px-2">
+              <button
+                onClick={() => setShowDocs(!showDocs)}
+                className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-colors"
+              >
+                {showDocs ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                <Database className="w-3.5 h-3.5 text-brand-secondary" />
+                <span>Knowledge Base</span>
+                <span className="text-[10px] bg-white/10 text-slate-400 px-1.5 py-0.2 rounded-full font-mono">
+                  {documents.length}
+                </span>
+              </button>
+
+              <button
+                onClick={onOpenUploadModal}
+                className="p-1 hover:bg-white/10 text-brand-secondary rounded-lg transition-colors flex items-center gap-1 text-[11px]"
+                title="Upload document"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Upload</span>
+              </button>
             </div>
-            <div className="space-y-1">
-              {OTHER_MODES.map(mode => {
-                const Icon = mode.icon;
-                const isActive = currentMode === mode.id;
-                return (
-                  <button
-                    key={mode.id}
-                    onClick={() => onSetMode(mode.id)}
-                    className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-amber-500/10 text-amber-100 border border-amber-500/20' 
-                        : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'
-                    }`}
+
+            {showDocs && (
+              <div className="space-y-1 pl-1">
+                {documents.map((doc) => {
+                  const isFiltered = selectedDocIds.includes(doc.id);
+
+                  return (
+                    <div
+                      key={doc.id}
+                      onClick={() => onToggleDocFilter(doc.id)}
+                      className={`group flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-all ${
+                        isFiltered
+                          ? "bg-brand-primary/10 border border-brand-primary/30 text-white"
+                          : "text-slate-400 hover:bg-white/5 hover:text-slate-300 border border-transparent"
+                      }`}
+                      title={isFiltered ? "Active filter for chat" : "Click to limit chat to this document"}
+                    >
+                      <div className="flex items-center gap-2 truncate min-w-0 pr-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleDocFilter(doc.id);
+                          }}
+                          className="shrink-0 text-slate-500 hover:text-brand-primary"
+                        >
+                          {isFiltered ? (
+                            <CheckSquare className="w-3.5 h-3.5 text-brand-primary" />
+                          ) : (
+                            <Square className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <FileText className="w-3.5 h-3.5 shrink-0 text-brand-secondary" />
+                        <span className="truncate text-[11px]">{doc.filename}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {doc.chunk_count}c
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteDocument(doc.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 text-slate-500 transition-opacity"
+                          title="Delete file"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {documents.length === 0 && (
+                  <div
+                    onClick={onOpenUploadModal}
+                    className="p-3 border border-dashed border-white/10 rounded-xl text-center text-[11px] text-slate-500 cursor-pointer hover:border-brand-primary/40 hover:text-slate-300 transition-colors"
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-amber-500' : 'text-slate-500'}`} />
-                    <span className="text-sm font-medium">{mode.label}</span>
-                  </button>
-                );
-              })}
+                    No documents yet. Click to upload PDF, DOCX, TXT, etc.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom User Profile & Logout */}
+        <div className="p-3 border-t border-white/5 shrink-0 flex items-center justify-between bg-slate-950/80">
+          <div className="flex items-center gap-2.5 truncate">
+            <div className="w-8 h-8 rounded-full bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white text-xs font-bold uppercase shrink-0">
+              {user?.username ? user.username[0] : "U"}
             </div>
-          </section>
+            <div className="truncate">
+              <div className="text-xs font-semibold text-white truncate">{user?.username}</div>
+              <div className="text-[10px] text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Active Session
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={onLogout}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            title="Log Out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </>
   );
 }
-
