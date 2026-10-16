@@ -270,13 +270,13 @@ def send_message(
     chat_history = [{"role": r[0], "content": r[1]} for r in history_rows]
 
     # 4. RAG Retrieval
-    doc_ids = req.selected_doc_ids if req.selected_doc_ids is not None else conv["selected_doc_ids"]
+    doc_ids = req.selected_doc_ids if req.selected_doc_ids is not None else conv.get("selected_doc_ids", [])
     web_enabled = req.web_search if req.web_search is not None else conv["web_search_enabled"]
 
     context, citations = rag_service.assemble_rag_context(
         query=user_text,
         user_id=current_user.user_id,
-        document_ids=doc_ids if doc_ids else None,
+        document_ids=doc_ids,
         enable_web_search=web_enabled
     )
 
@@ -368,13 +368,13 @@ async def stream_message(
     conn.close()
 
     # RAG Retrieval
-    doc_ids = [d.strip() for d in selected_docs.split(",") if d.strip()] if selected_docs else conv["selected_doc_ids"]
+    doc_ids = [d.strip() for d in selected_docs.split(",") if d.strip()] if selected_docs is not None else conv.get("selected_doc_ids", [])
     web_enabled = web_search if web_search is not None else conv["web_search_enabled"]
 
     context, citations = rag_service.assemble_rag_context(
         query=user_text,
         user_id=user_id,
-        document_ids=doc_ids if doc_ids else None,
+        document_ids=doc_ids,
         enable_web_search=web_enabled
     )
 
@@ -481,7 +481,7 @@ def regenerate_response(
     context, citations = rag_service.assemble_rag_context(
         query=user_text,
         user_id=current_user.user_id,
-        document_ids=conv["selected_doc_ids"] if conv["selected_doc_ids"] else None,
+        document_ids=conv.get("selected_doc_ids", []),
         enable_web_search=conv["web_search_enabled"]
     )
 

@@ -29,6 +29,12 @@ CORE OPERATIONAL RULES:
 3. CONTEXT INTEGRATION:
    - When both document context and web context are provided, synthesize them logically.
    - You may address follow-up questions by considering the conversation history.
+
+4. PERSONAL CHAT KNOWLEDGE BASE ISOLATION:
+   - Each conversation has its own dedicated personal knowledge base containing only the documents attached to THIS chat.
+   - You must ONLY reference and rely on the documents explicitly attached to this conversation (listed in the provided context).
+   - If the context shows that NO documents are attached to this conversation and the user asks a question about their documents or files, politely inform them that no files are currently attached to this chat's knowledge base and encourage them to attach or upload documents using the chat's attach button.
+   - Do NOT assume or hallucinate knowledge from documents that are not in this conversation's context.
 """
 
 class LLMService:

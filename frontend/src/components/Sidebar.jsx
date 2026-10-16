@@ -205,7 +205,18 @@ export default function Sidebar({
                               className="bg-slate-900 border border-brand-primary/50 text-white rounded px-1.5 py-0.5 text-xs w-full outline-none"
                             />
                           ) : (
-                            <span className="truncate">{conv.title}</span>
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="truncate">{conv.title}</span>
+                              {conv.selected_doc_ids && conv.selected_doc_ids.length > 0 && (
+                                <span
+                                  className="text-[10px] bg-brand-primary/20 text-brand-primary px-1.5 py-0.2 rounded-md font-mono shrink-0 flex items-center gap-0.5 border border-brand-primary/30"
+                                  title={`${conv.selected_doc_ids.length} document(s) in this chat's knowledge base`}
+                                >
+                                  <FileText className="w-2.5 h-2.5" />
+                                  <span>{conv.selected_doc_ids.length}</span>
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
 
@@ -262,7 +273,7 @@ export default function Sidebar({
             )}
           </div>
 
-          {/* Knowledge Base / Documents Section */}
+          {/* Knowledge Base / Document Library Section */}
           <div className="pt-3 border-t border-white/5 space-y-2">
             <div className="flex items-center justify-between px-2">
               <button
@@ -271,7 +282,7 @@ export default function Sidebar({
               >
                 {showDocs ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 <Database className="w-3.5 h-3.5 text-brand-secondary" />
-                <span>Knowledge Base</span>
+                <span>Document Library</span>
                 <span className="text-[10px] bg-white/10 text-slate-400 px-1.5 py-0.2 rounded-full font-mono">
                   {documents.length}
                 </span>
@@ -287,21 +298,25 @@ export default function Sidebar({
               </button>
             </div>
 
+            <div className="px-2 text-[10px] text-slate-500">
+              Check files to attach to active chat:
+            </div>
+
             {showDocs && (
               <div className="space-y-1 pl-1">
                 {documents.map((doc) => {
-                  const isFiltered = selectedDocIds.includes(doc.id);
+                  const isAttached = selectedDocIds.includes(doc.id);
 
                   return (
                     <div
                       key={doc.id}
                       onClick={() => onToggleDocFilter(doc.id)}
                       className={`group flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-all ${
-                        isFiltered
-                          ? "bg-brand-primary/10 border border-brand-primary/30 text-white"
+                        isAttached
+                          ? "bg-brand-primary/15 border border-brand-primary/40 text-white"
                           : "text-slate-400 hover:bg-white/5 hover:text-slate-300 border border-transparent"
                       }`}
-                      title={isFiltered ? "Active filter for chat" : "Click to limit chat to this document"}
+                      title={isAttached ? "Attached to current chat (click to detach)" : "Click to attach to current chat"}
                     >
                       <div className="flex items-center gap-2 truncate min-w-0 pr-1">
                         <button
@@ -311,7 +326,7 @@ export default function Sidebar({
                           }}
                           className="shrink-0 text-slate-500 hover:text-brand-primary"
                         >
-                          {isFiltered ? (
+                          {isAttached ? (
                             <CheckSquare className="w-3.5 h-3.5 text-brand-primary" />
                           ) : (
                             <Square className="w-3.5 h-3.5" />
@@ -322,6 +337,11 @@ export default function Sidebar({
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
+                        {isAttached && (
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded font-medium">
+                            in chat
+                          </span>
+                        )}
                         <span className="text-[9px] text-slate-500 font-mono">
                           {doc.chunk_count}c
                         </span>
@@ -331,7 +351,7 @@ export default function Sidebar({
                             onDeleteDocument(doc.id);
                           }}
                           className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 text-slate-500 transition-opacity"
-                          title="Delete file"
+                          title="Delete file permanently"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>

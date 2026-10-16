@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Send, Bot, User, Loader2, Sparkles, Quote, Globe, Share2,
   Copy, Check, RotateCcw, Menu, ExternalLink, ChevronDown,
-  Paperclip, ArrowUp, AlertCircle, FileText
+  Paperclip, ArrowUp, AlertCircle, FileText, Database, Plus, X,
+  Search, Shield, CheckCircle2, Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -18,13 +19,34 @@ const PROMPT_SUGGESTIONS = [
   "Highlight any potential risks, liabilities, or unanswered questions"
 ];
 
+const getFileIconColor = (filename = "") => {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  switch (ext) {
+    case "pdf": return "text-red-400";
+    case "docx":
+    case "doc": return "text-blue-400";
+    case "xlsx":
+    case "xls":
+    case "csv": return "text-emerald-400";
+    case "pptx":
+    case "ppt": return "text-orange-400";
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "webp": return "text-purple-400";
+    default: return "text-cyan-400";
+  }
+};
+
 export default function ChatView({
   conversation,
   onUpdateConversation,
   onSidebarToggle,
   onOpenShareModal,
   onOpenUploadModal,
-  documents
+  documents = [],
+  onAttachDoc,
+  onDetachDoc
 }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -33,10 +55,28 @@ export default function ChatView({
   const [copiedMsgIdx, setCopiedMsgIdx] = useState(null);
   const [copiedCodeKey, setCopiedCodeKey] = useState(null);
   const [error, setError] = useState(null);
+  const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
+  const [docSearchQuery, setDocSearchQuery] = useState("");
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const abortControllerRef = useRef(null);
+
+  // Derive attached vs unattached documents for this active conversation
+  const selectedDocIds = useMemo(() => {
+    return conversation?.selected_doc_ids || [];
+  }, [conversation?.selected_doc_ids]);
+
+  const attachedDocs = useMemo(() => {
+    return documents.filter((d) => selectedDocIds.includes(d.id));
+  }, [documents, selectedDocIds]);
+
+  const unattachedDocs = useMemo(() => {
+    const list = documents.filter((d) => !selectedDocIds.includes(d.id));
+    if (!docSearchQuery.trim()) return list;
+    const q = docSearchQuery.toLowerCase();
+    return list.filter((d) => d.filename.toLowerCase().includes(q));
+  }, [documents, selectedDocIds, docSearchQuery]);
 
   // Auto-scroll to bottom
   const scrollToBottom = (behavior = "smooth") => {
@@ -130,6 +170,8 @@ export default function ChatView({
     url.searchParams.set("web_search", String(conversation.web_search_enabled));
     if (selectedDocsQuery) {
       url.searchParams.set("selected_docs", selectedDocsQuery);
+    } else {
+      url.searchParams.set("selected_docs", "");
     }
 
     abortControllerRef.current = new AbortController();
@@ -220,7 +262,7 @@ export default function ChatView({
           const fallbackRes = await api.conversations.sendMessage(conversation.id, {
             text: textToSend,
             web_search: conversation.web_search_enabled,
-            selected_doc_ids: conversation.selected_doc_ids
+            selected_doc_ids: conversation.selected_doc_ids || []
           });
 
           setMessages((prev) => {
@@ -260,7 +302,6 @@ export default function ChatView({
     try {
       const res = await api.conversations.regenerate(conversation.id);
       setMessages((prev) => {
-        // Filter out last assistant message
         const withoutLastAi = prev.filter((m, i) => !(i === prev.length - 1 && m.role === "assistant"));
         return [
           ...withoutLastAi,
@@ -303,10 +344,6 @@ export default function ChatView({
     }
   };
 
-  // Document filter info
-  const selectedCount = conversation?.selected_doc_ids?.length || 0;
-  const docFilterText = selectedCount > 0 ? `${selectedCount} Docs Filtered` : "All Documents";
-
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-900/60 relative overflow-hidden">
       {/* Top Header Bar */}
@@ -324,7 +361,11 @@ export default function ChatView({
               {conversation?.title || "New Chat"}
             </h2>
             <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium">
-              <span>{docFilterText}</span>
+              <span className={attachedDocs.length > 0 ? "text-brand-primary font-semibold" : "text-slate-500"}>
+                {attachedDocs.length > 0
+                  ? `${attachedDocs.length} ${attachedDocs.length === 1 ? "file" : "files"} in this chat's knowledge base`
+                  : "No documents attached"}
+              </span>
               <span>•</span>
               <span className={conversation?.web_search_enabled ? "text-cyan-400" : "text-slate-500"}>
                 Web Search {conversation?.web_search_enabled ? "ON" : "OFF"}
@@ -335,6 +376,26 @@ export default function ChatView({
 
         {/* Header Controls */}
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          {/* Chat Knowledge Base Button */}
+          <button
+            onClick={() => setShowKnowledgeModal(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+              attachedDocs.length > 0
+                ? "bg-brand-primary/15 border-brand-primary/40 text-brand-primary hover:bg-brand-primary/25 shadow-xs shadow-brand-primary/20"
+                : "bg-white/5 border-dashed border-white/20 text-slate-400 hover:text-white hover:border-white/40"
+            }`}
+            title="Configure documents accessible by this chat"
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">
+              {attachedDocs.length > 0 ? `${attachedDocs.length} Docs in Chat` : "Attach Docs"}
+            </span>
+            <span className="sm:hidden">
+              {attachedDocs.length > 0 ? `${attachedDocs.length} Docs` : "Attach"}
+            </span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
+
           {/* Web Search Toggle Pill */}
           <button
             onClick={toggleWebSearch}
@@ -372,17 +433,75 @@ export default function ChatView({
         )}
 
         {messages.length === 0 && !loading && (
-          <div className="max-w-2xl mx-auto py-12 md:py-20 flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-xl shadow-brand-primary/20 mb-6">
+          <div className="max-w-2xl mx-auto py-8 md:py-16 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-xl shadow-brand-primary/20 mb-5">
               <Sparkles className="w-8 h-8 text-white" />
             </div>
 
-            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-3">
-              How can I help you today?
+            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
+              DocMind AI Research Assistant
             </h3>
-            <p className="text-slate-400 text-xs md:text-sm max-w-md leading-relaxed mb-8">
-              Ask deep questions about your uploaded documents, synthesize real-time web facts, or explore complex analytical topics with verified citations.
+            <p className="text-slate-400 text-xs md:text-sm max-w-md leading-relaxed mb-6">
+              Ask deep questions about your attached files with page-accurate citations and live web synthesis.
             </p>
+
+            {/* Chat Scope Status Card */}
+            <div className="w-full mb-6 p-4 rounded-2xl bg-white/5 border border-white/10 text-left">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-brand-primary" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    This Chat's Personal Knowledge Base
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowKnowledgeModal(true)}
+                  className="text-xs text-brand-primary hover:underline font-semibold flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Manage Files
+                </button>
+              </div>
+
+              {attachedDocs.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-300">
+                    DocMind is currently grounded strictly in the following <span className="font-semibold text-brand-primary">{attachedDocs.length}</span> file(s):
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {attachedDocs.map((doc) => (
+                      <span
+                        key={doc.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-brand-primary/30 text-white text-xs font-medium"
+                      >
+                        <FileText className={`w-3.5 h-3.5 ${getFileIconColor(doc.filename)}`} />
+                        <span className="truncate max-w-[200px]">{doc.filename}</span>
+                        <button
+                          onClick={() => onDetachDoc(doc.id)}
+                          className="text-slate-400 hover:text-red-400 ml-1 transition-colors"
+                          title="Detach file"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-900/80 border border-dashed border-white/15">
+                  <div className="text-xs text-slate-400">
+                    <span className="font-semibold text-slate-200">No documents attached yet. </span>
+                    Attach or upload files to give this chat its own private knowledge base.
+                  </div>
+                  <button
+                    onClick={() => setShowKnowledgeModal(true)}
+                    className="btn-primary text-xs px-3.5 py-1.5 shrink-0 flex items-center gap-1.5 font-semibold"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Attach Files</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Prompt Suggestion Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
@@ -399,13 +518,6 @@ export default function ChatView({
                 </button>
               ))}
             </div>
-
-            {documents.length === 0 && (
-              <div className="mt-8 flex items-center gap-2 text-xs text-slate-500">
-                <FileText className="w-4 h-4 text-brand-secondary" />
-                <span>Tip: Upload documents via the sidebar to enable full RAG synthesis.</span>
-              </div>
-            )}
           </div>
         )}
 
@@ -583,6 +695,54 @@ export default function ChatView({
       {/* Floating Bottom Input Bar */}
       <div className="p-3 md:p-6 bg-slate-950/70 backdrop-blur-md border-t border-white/5 shrink-0">
         <div className="max-w-3xl mx-auto relative">
+          {/* Active Chat Knowledge Base Chips Bar */}
+          {attachedDocs.length > 0 ? (
+            <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
+              <span className="text-[11px] font-semibold text-slate-400 shrink-0 flex items-center gap-1">
+                <Database className="w-3 h-3 text-brand-primary" />
+                Chat Knowledge Base:
+              </span>
+              {attachedDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-brand-primary/30 text-white text-[11px] shrink-0 shadow-xs"
+                >
+                  <FileText className={`w-3 h-3 ${getFileIconColor(doc.filename)}`} />
+                  <span className="max-w-[150px] truncate">{doc.filename}</span>
+                  <button
+                    onClick={() => onDetachDoc(doc.id)}
+                    className="text-slate-400 hover:text-red-400 transition-colors ml-0.5"
+                    title={`Detach ${doc.filename} from this chat`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setShowKnowledgeModal(true)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-[11px] shrink-0 transition-colors"
+                title="Add more documents to this chat"
+              >
+                <Plus className="w-3 h-3 text-brand-primary" />
+                <span>Add Doc</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-2 mb-2 text-[11px] text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <Database className="w-3 h-3 text-slate-600" />
+                <span>No documents attached to this chat.</span>
+              </div>
+              <button
+                onClick={() => setShowKnowledgeModal(true)}
+                className="text-brand-primary hover:underline font-semibold flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Attach / Upload to Chat
+              </button>
+            </div>
+          )}
+
+          {/* Textarea Container */}
           <div className="relative rounded-2xl bg-slate-900 border border-white/10 shadow-xl focus-within:border-brand-primary/50 transition-all">
             <textarea
               ref={textareaRef}
@@ -590,7 +750,11 @@ export default function ChatView({
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your documents or search the web..."
+              placeholder={
+                attachedDocs.length > 0
+                  ? `Ask anything about ${attachedDocs.length === 1 ? attachedDocs[0].filename : `${attachedDocs.length} attached documents`}...`
+                  : "Ask anything, search the web, or attach documents to this chat..."
+              }
               className="w-full bg-transparent pl-4 pr-24 py-3.5 text-xs md:text-sm text-white placeholder-slate-500 outline-none resize-none max-h-48 custom-scrollbar"
             />
 
@@ -610,12 +774,12 @@ export default function ChatView({
                 <Globe className="w-4 h-4" />
               </button>
 
-              {/* Upload file icon button */}
+              {/* Attach / Upload file icon button */}
               <button
                 type="button"
-                onClick={onOpenUploadModal}
-                className="p-2 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors"
-                title="Upload document"
+                onClick={() => setShowKnowledgeModal(true)}
+                className="p-2 rounded-xl text-slate-400 hover:text-brand-primary hover:bg-brand-primary/10 transition-colors"
+                title="Manage chat attached documents"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -645,10 +809,165 @@ export default function ChatView({
           </div>
 
           <div className="mt-2 text-center text-[10px] text-slate-500">
-            DocMind AI uses hybrid vector retrieval and verified source citations. Check critical information.
+            DocMind AI strictly isolates retrieval to documents attached to this chat. Check critical information.
           </div>
         </div>
       </div>
+
+      {/* Chat Personal Knowledge Base Modal */}
+      <AnimatePresence>
+        {showKnowledgeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-xl rounded-2xl bg-slate-900 border border-white/10 p-6 md:p-8 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <button
+                onClick={() => setShowKnowledgeModal(false)}
+                className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center text-brand-primary">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Chat Personal Knowledge Base</h3>
+                  <p className="text-xs text-slate-400">
+                    Only documents attached below will be accessed by DocMind in this conversation.
+                  </p>
+                </div>
+              </div>
+
+              {/* Upload directly to this chat button */}
+              <div className="mb-4">
+                <button
+                  onClick={() => {
+                    setShowKnowledgeModal(false);
+                    onOpenUploadModal();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-white font-semibold text-xs transition-colors"
+                >
+                  <Plus className="w-4 h-4 text-brand-primary" />
+                  <span>Upload New Document Directly to this Chat</span>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-5 pr-1 custom-scrollbar">
+                {/* 1. Attached to this chat */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Active in this Chat ({attachedDocs.length})
+                    </span>
+                    {attachedDocs.length > 0 && (
+                      <span className="text-[11px] text-slate-400">
+                        {attachedDocs.length} {attachedDocs.length === 1 ? "document" : "documents"} accessible
+                      </span>
+                    )}
+                  </div>
+
+                  {attachedDocs.length > 0 ? (
+                    <div className="space-y-2">
+                      {attachedDocs.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-brand-primary/20 text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <FileText className={`w-4 h-4 shrink-0 ${getFileIconColor(doc.filename)}`} />
+                            <div className="truncate">
+                              <div className="font-medium text-white truncate">{doc.filename}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">
+                                {doc.chunk_count || 0} chunks • {doc.file_type?.toUpperCase() || "DOC"}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => onDetachDoc(doc.id)}
+                            className="px-2.5 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-slate-950/60 border border-dashed border-white/10 text-center text-xs text-slate-500">
+                      No documents attached to this chat. This chat operates with general intelligence & web search only.
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Available in Library */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      From Your Document Library ({unattachedDocs.length})
+                    </span>
+                  </div>
+
+                  {documents.length > 4 && (
+                    <div className="relative mb-2">
+                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Filter documents in library..."
+                        value={docSearchQuery}
+                        onChange={(e) => setDocSearchQuery(e.target.value)}
+                        className="w-full bg-slate-950 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-brand-primary/40"
+                      />
+                    </div>
+                  )}
+
+                  {unattachedDocs.length > 0 ? (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                      {unattachedDocs.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs transition-colors"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <FileText className={`w-3.5 h-3.5 shrink-0 ${getFileIconColor(doc.filename)}`} />
+                            <span className="truncate text-slate-300">{doc.filename}</span>
+                          </div>
+                          <button
+                            onClick={() => onAttachDoc(doc.id)}
+                            className="px-2.5 py-1 rounded-lg bg-brand-primary/20 hover:bg-brand-primary/30 text-brand-primary text-xs font-medium transition-colors shrink-0 flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Attach</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-slate-500 italic p-2">
+                      {documents.length === 0
+                        ? "Your document library is empty. Upload documents above to begin."
+                        : "All documents in your library are already attached to this chat."}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-end">
+                <button
+                  onClick={() => setShowKnowledgeModal(false)}
+                  className="btn-primary px-5 py-2 text-xs font-semibold"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

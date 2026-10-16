@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Trash2, Database, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api";
 
@@ -7,11 +7,17 @@ const SUPPORTED_EXTS = [
   "PDF", "DOCX", "PPTX", "XLSX", "TXT", "MD", "CSV", "JSON", "PNG", "JPG", "WEBP"
 ];
 
-export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
+export default function UploadModal({
+  isOpen,
+  onClose,
+  onUploadSuccess,
+  activeConversation
+}) {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [attachToCurrentChat, setAttachToCurrentChat] = useState(true);
   const fileInputRef = useRef(null);
 
   if (!isOpen) return null;
@@ -44,10 +50,19 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
       formData.append("files", file);
     });
 
+    if (attachToCurrentChat && activeConversation?.id) {
+      formData.append("conversation_id", activeConversation.id);
+    }
+
     try {
       const res = await api.documents.upload(formData);
       setSelectedFiles([]);
-      onUploadSuccess(res.documents);
+      if (onUploadSuccess) {
+        onUploadSuccess(
+          res.documents || [],
+          attachToCurrentChat ? activeConversation?.id : null
+        );
+      }
       onClose();
     } catch (err) {
       setError(err.message || "Upload failed. Please check file format and size.");
@@ -71,7 +86,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center text-brand-primary">
             <UploadCloud className="w-5 h-5" />
           </div>
@@ -80,6 +95,28 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
             <p className="text-xs text-slate-400">PDF, Word, Excel, PowerPoint, Images, Text</p>
           </div>
         </div>
+
+        {/* Chat Scope Destination Banner */}
+        {activeConversation && (
+          <div className="mb-4 p-3 rounded-xl bg-brand-primary/10 border border-brand-primary/25 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 truncate">
+              <Database className="w-4 h-4 text-brand-primary shrink-0" />
+              <div className="truncate">
+                <span className="text-slate-400">Target Chat: </span>
+                <span className="font-semibold text-white truncate">{activeConversation.title || "Active Chat"}</span>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none shrink-0 text-slate-300 hover:text-white">
+              <input
+                type="checkbox"
+                checked={attachToCurrentChat}
+                onChange={(e) => setAttachToCurrentChat(e.target.checked)}
+                className="rounded accent-brand-primary cursor-pointer w-4 h-4"
+              />
+              <span className="text-[11px] font-medium">Attach to this Chat</span>
+            </label>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
@@ -94,7 +131,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
+          className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
             isDragOver
               ? "border-brand-primary bg-brand-primary/10"
               : "border-white/10 hover:border-white/20 bg-slate-950/40"
@@ -123,7 +160,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
 
         {/* Selected files preview */}
         {selectedFiles.length > 0 && (
-          <div className="mt-4 flex-1 overflow-y-auto space-y-2 pr-1 max-h-48 custom-scrollbar">
+          <div className="mt-4 flex-1 overflow-y-auto space-y-2 pr-1 max-h-40 custom-scrollbar">
             <div className="text-xs font-semibold text-slate-400 px-1">
               Selected files ({selectedFiles.length})
             </div>

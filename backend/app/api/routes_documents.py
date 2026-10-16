@@ -1,4 +1,5 @@
 import os
+import json
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from app.api.models import DocumentItem, DocumentListResponse, DocumentUploadResponse
@@ -50,6 +51,7 @@ def list_documents(current_user: AuthUser = Depends(get_current_user)):
 @router.post("/api/documents/upload")
 async def upload_documents(
     files: List[UploadFile] = File(...),
+    conversation_id: Optional[str] = Form(None),
     current_user: AuthUser = Depends(get_current_user)
 ):
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -139,11 +141,38 @@ async def upload_documents(
         conn.close()
 
         results.append({
+            "id": doc_id,
             "document_id": doc_id,
             "filename": file.filename,
+            "file_type": ext,
             "chunks": len(chunks),
+            "chunk_count": len(chunks),
             "status": "ready"
         })
+
+    # If conversation_id is provided, automatically attach new docs to this conversation's personal knowledge base
+    if conversation_id and results:
+        try:
+            link_conn = get_db_conn()
+            link_cur = link_conn.cursor()
+            link_cur.execute(
+                "SELECT selected_doc_ids FROM conversations WHERE id = %s AND user_id = %s",
+                (conversation_id, current_user.user_id)
+            )
+            c_row = link_cur.fetchone()
+            if c_row:
+                current_selected = c_row[0] if isinstance(c_row[0], list) else (json.loads(c_row[0]) if c_row[0] else [])
+                new_ids = [r["id"] for r in results]
+                merged = list(dict.fromkeys(current_selected + new_ids))
+                link_cur.execute(
+                    "UPDATE conversations SET selected_doc_ids = %s::jsonb, updated_at = now() WHERE id = %s",
+                    (json.dumps(merged), conversation_id)
+                )
+                link_conn.commit()
+            link_cur.close()
+            link_conn.close()
+        except Exception as link_err:
+            pass
 
     return {
         "message": f"Successfully uploaded and indexed {len(results)} document(s)",

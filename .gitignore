@@ -1,0 +1,17 @@
+# Cache & Virtual Environment
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*$py.class
+backend/.pytest_cache/
+backend/__pycache__/
+backend/venv/
+
+# Environment
+.env
+backend/.env
+frontend/.env.local
+
+# Node
+frontend/node_modules/
+frontend/dist/

@@ -147,10 +147,22 @@ function App() {
   };
 
   // Document handlers
-  const handleUploadSuccess = async () => {
+  const handleUploadSuccess = async (uploadedDocs = [], targetConvId = activeConversationId) => {
     try {
       const docsData = await api.documents.list();
-      setDocuments(docsData.documents || []);
+      const allDocs = docsData.documents || [];
+      setDocuments(allDocs);
+
+      if (targetConvId && uploadedDocs.length > 0) {
+        const newIds = uploadedDocs.map(d => d.id || d.document_id).filter(Boolean);
+        const targetConv = conversations.find(c => c.id === targetConvId);
+        if (targetConv) {
+          const currentIds = targetConv.selected_doc_ids || [];
+          const updatedIds = Array.from(new Set([...currentIds, ...newIds]));
+          await api.conversations.update(targetConvId, { selected_doc_ids: updatedIds });
+          handleUpdateConversation(targetConvId, { selected_doc_ids: updatedIds });
+        }
+      }
     } catch (err) {
       console.error("Failed to refresh documents:", err);
     }
@@ -173,8 +185,8 @@ function App() {
     }
   };
 
-  const handleToggleDocFilter = async (docId) => {
-    const activeConv = conversations.find((c) => c.id === activeConversationId);
+  const handleToggleDocFilter = async (docId, convId = activeConversationId) => {
+    const activeConv = conversations.find((c) => c.id === convId);
     if (!activeConv) return;
 
     const currentSelected = activeConv.selected_doc_ids || [];
@@ -187,6 +199,33 @@ function App() {
       handleUpdateConversation(activeConv.id, { selected_doc_ids: nextSelected });
     } catch (err) {
       console.error("Failed to toggle document filter:", err);
+    }
+  };
+
+  const handleAttachDoc = async (docId, convId = activeConversationId) => {
+    const targetConv = conversations.find((c) => c.id === convId);
+    if (!targetConv) return;
+    const currentSelected = targetConv.selected_doc_ids || [];
+    if (currentSelected.includes(docId)) return;
+    const nextSelected = [...currentSelected, docId];
+    try {
+      await api.conversations.update(targetConv.id, { selected_doc_ids: nextSelected });
+      handleUpdateConversation(targetConv.id, { selected_doc_ids: nextSelected });
+    } catch (err) {
+      console.error("Failed to attach document to chat:", err);
+    }
+  };
+
+  const handleDetachDoc = async (docId, convId = activeConversationId) => {
+    const targetConv = conversations.find((c) => c.id === convId);
+    if (!targetConv) return;
+    const currentSelected = targetConv.selected_doc_ids || [];
+    const nextSelected = currentSelected.filter((id) => id !== docId);
+    try {
+      await api.conversations.update(targetConv.id, { selected_doc_ids: nextSelected });
+      handleUpdateConversation(targetConv.id, { selected_doc_ids: nextSelected });
+    } catch (err) {
+      console.error("Failed to detach document from chat:", err);
     }
   };
 
@@ -223,6 +262,8 @@ function App() {
         documents={documents}
         selectedDocIds={activeConversation?.selected_doc_ids || []}
         onToggleDocFilter={handleToggleDocFilter}
+        onAttachDoc={handleAttachDoc}
+        onDetachDoc={handleDetachDoc}
         onDeleteDocument={handleDeleteDocument}
         onOpenUploadModal={() => setUploadModalOpen(true)}
         sidebarOpen={sidebarOpen}
@@ -240,6 +281,8 @@ function App() {
           onOpenShareModal={() => setShareModalOpen(true)}
           onOpenUploadModal={() => setUploadModalOpen(true)}
           documents={documents}
+          onAttachDoc={handleAttachDoc}
+          onDetachDoc={handleDetachDoc}
         />
       </main>
 
@@ -256,6 +299,7 @@ function App() {
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         onUploadSuccess={handleUploadSuccess}
+        activeConversation={activeConversation}
       />
     </div>
   );

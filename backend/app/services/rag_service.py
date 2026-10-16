@@ -82,7 +82,13 @@ class RAGService:
         """
         Performs Hybrid Search using Pinecone vector retrieval + BM25-style keyword search,
         combined with Reciprocal Rank Fusion (RRF).
+        Strictly limits search to `document_ids` if provided. If document_ids is an empty list,
+        returns no documents.
         """
+        # If an empty list of document_ids is provided, this chat has 0 documents attached
+        if document_ids is not None and len(document_ids) == 0:
+            return []
+
         # 1. Vector Search
         vector_docs = vector_service.similarity_search(
             query=query,
@@ -129,37 +135,69 @@ class RAGService:
     ) -> Tuple[str, List[Citation]]:
         """
         Assembles hybrid document evidence and web search results into unified context
-        along with structured citations.
+        along with structured citations, respecting chat-specific document attachments.
         """
         citations: List[Citation] = []
         context_parts: List[str] = []
 
-        # 1. Document retrieval
-        doc_chunks = self.hybrid_retrieve(
-            query=query,
-            user_id=user_id,
-            document_ids=document_ids,
-            top_k=6
-        )
-
-        if doc_chunks:
-            context_parts.append("### USER DOCUMENTS EVIDENCE:")
-            for idx, doc in enumerate(doc_chunks, start=1):
-                fname = doc.metadata.get("filename", "Document")
-                page = doc.metadata.get("page", 1)
-                text = doc.page_content.strip()
-
-                context_parts.append(
-                    f"[[DOCUMENT_REF_{idx}]] File: {fname} (Page {page}):\n{text}"
+        # 1. Inspect attached documents for this chat
+        attached_docs_summary = []
+        if document_ids:
+            try:
+                conn = get_db_conn()
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT id, filename, file_type FROM documents WHERE user_id = %s AND id = ANY(%s)",
+                    (user_id, document_ids)
                 )
-                citations.append(
-                    Citation(
-                        title=f"{fname} (Page {page})",
-                        page=page,
-                        snippet=text[:250],
-                        type="doc"
+                rows = cur.fetchall()
+                cur.close()
+                conn.close()
+                attached_docs_summary = [f"{r[1]} ({r[2]})" for r in rows]
+            except Exception:
+                attached_docs_summary = []
+
+        if attached_docs_summary:
+            context_parts.append(
+                f"### THIS CHAT'S PERSONAL KNOWLEDGE BASE (ATTACHED DOCUMENTS):\n"
+                f"Active files: {', '.join(attached_docs_summary)}\n"
+                f"Note: Only the documents listed above belong to this chat's knowledge base."
+            )
+        elif document_ids is not None and len(document_ids) == 0:
+            context_parts.append(
+                "### THIS CHAT'S PERSONAL KNOWLEDGE BASE:\n"
+                "No documents are attached to this conversation. "
+                "If the user asks questions regarding any documents, reports, or files, state that "
+                "no documents are attached to this chat and prompt them to attach or upload documents using the Paperclip / Attach button."
+            )
+
+        # 2. Document retrieval (only if document_ids is None or contains IDs)
+        if document_ids is None or len(document_ids) > 0:
+            doc_chunks = self.hybrid_retrieve(
+                query=query,
+                user_id=user_id,
+                document_ids=document_ids,
+                top_k=6
+            )
+
+            if doc_chunks:
+                context_parts.append("### USER DOCUMENTS EVIDENCE:")
+                for idx, doc in enumerate(doc_chunks, start=1):
+                    fname = doc.metadata.get("filename", "Document")
+                    page = doc.metadata.get("page", 1)
+                    text = doc.page_content.strip()
+
+                    context_parts.append(
+                        f"[[DOCUMENT_REF_{idx}]] File: {fname} (Page {page}):\n{text}"
                     )
-                )
+                    citations.append(
+                        Citation(
+                            title=f"{fname} (Page {page})",
+                            page=page,
+                            snippet=text[:250],
+                            type="doc"
+                        )
+                    )
 
         # 2. Web search retrieval
         if enable_web_search:
