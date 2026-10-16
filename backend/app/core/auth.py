@@ -11,9 +11,6 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-
-# bcrypt has a 72-byte password limit and passlib<2 can be flaky with bcrypt>=4.
-# pbkdf2_sha256 is broadly supported and avoids those issues.
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -23,6 +20,8 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    if not password_hash:
+        return False
     return pwd_context.verify(password, password_hash)
 
 
@@ -43,16 +42,33 @@ def get_current_user(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
 ) -> AuthUser:
     if creds is None or not creds.credentials:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="Authentication required. Please sign in.")
     token = creds.credentials
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired. Please sign in again.")
     except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid authorization token.")
 
     user_id = payload.get("sub")
     username = payload.get("username")
     if not user_id or not username:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
+        raise HTTPException(status_code=401, detail="Invalid token payload.")
     return AuthUser(user_id=str(user_id), username=str(username))
 
+
+def get_optional_user(
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+) -> Optional[AuthUser]:
+    if creds is None or not creds.credentials:
+        return None
+    try:
+        payload = jwt.decode(creds.credentials, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        username = payload.get("username")
+        if user_id and username:
+            return AuthUser(user_id=str(user_id), username=str(username))
+    except Exception:
+        pass
+    return None
