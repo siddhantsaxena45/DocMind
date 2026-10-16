@@ -1,76 +1,81 @@
-from fastapi import APIRouter, HTTPException
-from app.api.models import UserRequest, SignupRequest, LoginRequest
+from fastapi import APIRouter, HTTPException, Depends
+from app.api.models import SignupRequest, LoginRequest, AuthResponse, UserMeResponse
 from app.core.database import get_db_conn
 from app.core.auth import create_access_token, hash_password, verify_password, get_current_user, AuthUser
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 
-# Legacy dev endpoint (kept for backward compatibility with current frontend)
-@router.post("/get_or_create_user")
-def get_or_create_user(req: UserRequest):
-    conn = get_db_conn()
-    cur  = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE username = %s", (req.username,))
-    row = cur.fetchone()
-    if row:
-        user_id = str(row[0])
-    else:
-        cur.execute(
-            "INSERT INTO users (username) VALUES (%s) RETURNING id",
-            (req.username,),
-        )
-        conn.commit()
-        user_id = str(cur.fetchone()[0])
-    cur.close()
-    conn.close()
-    return {"user_id": user_id, "username": req.username}
-
-
-@router.post("/auth/signup")
-def signup(req: SignupRequest):
-    username = req.username.strip()
-    if not username or not req.password:
-        raise HTTPException(status_code=400, detail="Username and password required")
+def _signup_impl(req: SignupRequest):
+    username = req.username.strip().lower()
+    if not username or len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
     conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE username = %s", (username,))
+    cur.execute("SELECT id FROM users WHERE LOWER(username) = %s", (username,))
     if cur.fetchone():
-        cur.close(); conn.close()
-        raise HTTPException(status_code=409, detail="Username already exists")
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=409, detail="Username is already taken")
 
     pw_hash = hash_password(req.password)
     cur.execute(
         "INSERT INTO users (username, password_hash) VALUES (%s, %s) RETURNING id",
         (username, pw_hash),
     )
-    conn.commit()
     user_id = str(cur.fetchone()[0])
-    cur.close(); conn.close()
+    conn.commit()
+    cur.close()
+    conn.close()
 
     token = create_access_token(user_id=user_id, username=username)
-    return {"access_token": token, "token_type": "bearer", "user_id": user_id, "username": username}
+    return AuthResponse(access_token=token, token_type="bearer", user_id=user_id, username=username)
 
 
-@router.post("/auth/login")
-def login(req: LoginRequest):
-    username = req.username.strip()
+def _login_impl(req: LoginRequest):
+    username = req.username.strip().lower()
     conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, password_hash FROM users WHERE username = %s", (username,))
+    cur.execute("SELECT id, password_hash, username FROM users WHERE LOWER(username) = %s", (username,))
     row = cur.fetchone()
-    cur.close(); conn.close()
+    cur.close()
+    conn.close()
 
     if not row:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    user_id, pw_hash = str(row[0]), row[1]
-    if not pw_hash or not verify_password(req.password, pw_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    token = create_access_token(user_id=user_id, username=username)
-    return {"access_token": token, "token_type": "bearer", "user_id": user_id, "username": username}
+    user_id, pw_hash, stored_username = str(row[0]), row[1], row[2]
+    if not verify_password(req.password, pw_hash):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    token = create_access_token(user_id=user_id, username=stored_username)
+    return AuthResponse(access_token=token, token_type="bearer", user_id=user_id, username=stored_username)
 
 
-@router.get("/auth/me")
-def me(user: AuthUser = get_current_user):
-    return {"user_id": user.user_id, "username": user.username}
+# Standard API routes
+@router.post("/api/auth/signup", response_model=AuthResponse)
+def signup(req: SignupRequest):
+    return _signup_impl(req)
+
+@router.post("/api/auth/login", response_model=AuthResponse)
+def login(req: LoginRequest):
+    return _login_impl(req)
+
+@router.get("/api/auth/me", response_model=UserMeResponse)
+def get_me(current_user: AuthUser = Depends(get_current_user)):
+    return UserMeResponse(user_id=current_user.user_id, username=current_user.username)
+
+# Backward-compatible aliases without /api prefix
+@router.post("/auth/signup", response_model=AuthResponse, include_in_schema=False)
+def signup_alias(req: SignupRequest):
+    return _signup_impl(req)
+
+@router.post("/auth/login", response_model=AuthResponse, include_in_schema=False)
+def login_alias(req: LoginRequest):
+    return _login_impl(req)
+
+@router.get("/auth/me", response_model=UserMeResponse, include_in_schema=False)
+def get_me_alias(current_user: AuthUser = Depends(get_current_user)):
+    return UserMeResponse(user_id=current_user.user_id, username=current_user.username)
