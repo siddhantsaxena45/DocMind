@@ -128,21 +128,21 @@ flowchart TD
     end
 
     subgraph Storage["Databases & Infrastructure"]
-        PG[("PostgreSQL\n(Users, Chats, Docs)")]
-        PC[("Pinecone Serverless\n(namespace = user_id)")]
+        PG[("PostgreSQL<br/>(Users, Chats, Docs)")]
+        PC[("Pinecone Serverless<br/>(namespace = user_id)")]
     end
 
-    UI -->|Auth & Prompts| Server
-    KB -->|Attach / Detach Docs| ChatRouter
-    DocRouter -->|Raw File Ingestion| Parser
-    Parser -->|Embeddings| PC
-    Parser -->|Metadata & Text| PG
-    ChatRouter -->|Retrieve Evidence| RAG
-    RAG -->|Vector Search (Filtered)| PC
-    RAG -->|BM25 Search (Filtered)| PG
-    RAG -->|Web Query| WebSearch
-    RAG -->|Unified Context| LLM
-    LLM -->|SSE Token Stream| SSE_C
+    UI -->|"Auth & Prompts"| Server
+    KB -->|"Attach / Detach Docs"| ChatRouter
+    DocRouter -->|"Raw File Ingestion"| Parser
+    Parser -->|"Embeddings"| PC
+    Parser -->|"Metadata & Text"| PG
+    ChatRouter -->|"Retrieve Evidence"| RAG
+    RAG -->|"Vector Search (Filtered)"| PC
+    RAG -->|"BM25 Search (Filtered)"| PG
+    RAG -->|"Web Query"| WebSearch
+    RAG -->|"Unified Context"| LLM
+    LLM -->|"SSE Token Stream"| SSE_C
 ```
 
 ---
