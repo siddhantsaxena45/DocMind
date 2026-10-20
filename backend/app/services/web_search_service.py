@@ -114,4 +114,30 @@ class WebSearchService:
                         })
         return results
 
+    def search_multi(self, queries: List[str], max_results: int = 8) -> List[Dict[str, Any]]:
+        """
+        Executes web searches across multiple targeted queries and merges results,
+        deduplicating by URL to provide diverse, rich verification sources.
+        """
+        merged_results: List[Dict[str, Any]] = []
+        seen_urls = set()
+
+        for q in queries:
+            if not q.strip():
+                continue
+            sub_results = self.search(q.strip(), max_results=4)
+            for item in sub_results:
+                url = item.get("url", "").rstrip("/")
+                if url and url.lower() not in seen_urls:
+                    seen_urls.add(url.lower())
+                    merged_results.append(item)
+                    if len(merged_results) >= max_results:
+                        break
+            if len(merged_results) >= max_results:
+                break
+
+        return merged_results
+
+
 web_search_service = WebSearchService()
+

@@ -41,7 +41,31 @@ CORE OPERATIONAL RULES:
    - You must ONLY reference and rely on the documents explicitly attached to this conversation (listed in the provided context).
    - If the context shows that NO documents are attached to this conversation and the user asks a question about their documents or files, politely inform them that no files are currently attached to this chat's knowledge base and encourage them to attach or upload documents using the chat's attach button.
    - Do NOT assume or hallucinate knowledge from documents that are not in this conversation's context.
+
+5. FACT-CHECKING & EXTERNAL VERIFICATION:
+   - When asked to verify, investigate claims, fact-check, or look up a person, author, company, project, or resume online:
+   - Cross-examine the claims stated in the document with the real-time web search findings (e.g. GitHub repos, LinkedIn, live projects, credentials, news).
+   - Structure your response into a rigorous, professional Verification Report:
+     * **Candidate / Entity Overview**: State the verified name, location, and role.
+     * **Online Presence & Profiles**: Provide verified clickable links (e.g. [GitHub Profile](URL), [LinkedIn Profile](URL), [Live Portfolio/Project](URL)).
+     * **Claims vs Reality Verification Table**:
+       | Claim in Document | Online Evidence Found | Verification Status |
+       | :--- | :--- | :--- |
+     * **Key takeaway**: Concise summary of credibility, verified projects, and authenticity.
 """
+
+def is_verification_query(query: str) -> bool:
+    q = query.lower()
+    terms = [
+        "verify", "verification", "fact check", "factcheck", "check on internet",
+        "search on internet", "search internet", "search the internet", "check online",
+        "search online", "look up", "lookup", "google him", "google this", "google them",
+        "background check", "is this real", "is this true", "confirm claims", "claims",
+        "github", "linkedin", "portfolio", "leetcode", "credentials", "online presence",
+        "on internet", "on the web", "legit", "authentic", "audit this", "who is this"
+    ]
+    return any(t in q for t in terms)
+
 
 class LLMService:
     def _get_llm(self, api_key: str, streaming: bool = False, temperature: float = 0.3):
@@ -161,6 +185,105 @@ class LLMService:
         # Fast fallback heuristic
         words = re.findall(r'\b\w+\b', cleaned)
         return " ".join(words[:5]).title()
+
+    def formulate_verification_queries(
+        self,
+        query: str,
+        doc_context: str,
+        extracted_links: Optional[List[str]] = None
+    ) -> Tuple[List[str], str]:
+        """
+        When a user asks to verify, investigate claims, or search for a person/project/company
+        from an attached document, formulates 1-3 targeted, entity-grounded search queries
+        using proper nouns, usernames, project titles, and URLs from the document.
+        Returns (list_of_queries, search_topic).
+        """
+        extracted_links = extracted_links or []
+        links_preview = ", ".join(extracted_links[:8]) if extracted_links else "None"
+        doc_snippet = doc_context[:2500].strip()
+
+        api_keys = api_key_rotator.get_rotated_google_keys()
+        if api_keys and doc_snippet:
+            prompt = (
+                "You are an investigative verification search planner. "
+                "The user is asking to verify, fact-check, or search the internet regarding claims, people, projects, or entities in their document.\n\n"
+                f"=== USER QUERY ===\n{query}\n\n"
+                f"=== EXTRACTED DOCUMENT LINKS ===\n{links_preview}\n\n"
+                f"=== DOCUMENT TEXT EXCERPT ===\n{doc_snippet}\n\n"
+                "INSTRUCTIONS:\n"
+                "Formulate 1 to 3 targeted DuckDuckGo search queries to investigate the primary subject (person's real name, company, university, project names, GitHub/LinkedIn profile).\n"
+                "- NEVER output generic search phrases like 'what can u verify about his resume on internet' or 'how to check background'.\n"
+                "- Extract real entity names from the document (e.g., '\"Siddhant Saxena\" \"Jaypee Institute\"', 'siddhantsaxena45 github', '\"SidCode.AI\" Siddhant').\n"
+                "- Output ONLY a JSON object with this exact structure:\n"
+                "{\n"
+                '  "queries": ["query 1", "query 2"],\n'
+                '  "topic": "Concise 3-5 word topic for UI badge (e.g. Siddhant Saxena & Projects)"\n'
+                "}\n"
+            )
+
+            for key in api_keys[:2]:
+                try:
+                    llm = self._get_llm(key, streaming=False, temperature=0.1)
+                    res = llm.invoke([HumanMessage(content=prompt)])
+                    raw = res.content if isinstance(res.content, str) else str(res.content)
+                    match = re.search(r'\{.*\}', raw, re.DOTALL)
+                    if match:
+                        data = json.loads(match.group(0))
+                        queries = [str(q).strip() for q in data.get("queries", []) if str(q).strip()]
+                        topic = str(data.get("topic", "")).strip() or "Verification Search"
+                        if queries:
+                            return queries[:3], topic
+                except Exception as e:
+                    logger.warning(f"Verification query generation attempt failed: {e}")
+                    continue
+
+        return self._heuristic_verification_fallback(query, doc_snippet, extracted_links)
+
+    def _heuristic_verification_fallback(
+        self,
+        query: str,
+        doc_snippet: str,
+        extracted_links: List[str]
+    ) -> Tuple[List[str], str]:
+        queries: List[str] = []
+        topic = "Document Entity Verification"
+
+        # 1. Try to extract GitHub username or handle from links
+        for link in extracted_links:
+            if "github.com/" in link:
+                handle = link.split("github.com/")[-1].strip("/").split("/")[0]
+                if handle and handle.lower() not in ["topics", "explore", "features", "pricing"]:
+                    queries.append(f"{handle} github")
+            elif "linkedin.com/in/" in link:
+                slug = link.split("linkedin.com/in/")[-1].strip("/").split("/")[0]
+                if slug:
+                    queries.append(f"{slug} linkedin")
+
+        # 2. Extract prominent entity name from first lines of document
+        lines = [line.strip() for line in doc_snippet.splitlines() if line.strip() and not line.startswith("---") and not line.startswith("[")]
+        subject_name = ""
+        for line in lines[:6]:
+            words = line.split()
+            if 2 <= len(words) <= 5 and all(w[0].isupper() for w in words if w.isalpha()):
+                subject_name = " ".join(words)
+                break
+
+        if subject_name:
+            queries.insert(0, f'"{subject_name}"')
+            topic = f"{subject_name} Verification"
+
+        if not queries:
+            clean_q = re.sub(
+                r'\b(verify|verification|check|on internet|what can u|can you|search|his|her|this|the|resume|claims|background)\b',
+                '',
+                query,
+                flags=re.IGNORECASE
+            ).strip()
+            queries = [clean_q if len(clean_q) > 3 else query[:60]]
+            topic = "Online Verification"
+
+        return queries[:3], topic
+
 
     def generate_followup_questions(self, query: str, answer_snippet: str) -> List[str]:
         """

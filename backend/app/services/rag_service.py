@@ -4,6 +4,8 @@ from typing import List, Dict, Any, Optional, Tuple
 from langchain_core.documents import Document
 from app.services.vector_service import vector_service
 from app.services.web_search_service import web_search_service
+from app.services.llm_service import llm_service, is_verification_query
+from app.services.document_service import extract_urls_from_text
 from app.core.database import get_db_conn
 from app.api.models import Citation
 
@@ -132,13 +134,18 @@ class RAGService:
         user_id: str,
         document_ids: Optional[List[str]] = None,
         enable_web_search: bool = True
-    ) -> Tuple[str, List[Citation]]:
+    ) -> Tuple[str, List[Citation], Optional[str]]:
         """
         Assembles hybrid document evidence and web search results into unified context
         along with structured citations, respecting chat-specific document attachments.
+        Dynamically formulates targeted verification queries when checking claims, people,
+        or projects from attached documents.
+        Returns: (full_context, citations, search_topic).
         """
         citations: List[Citation] = []
         context_parts: List[str] = []
+        search_topic: Optional[str] = None
+        doc_chunks: List[Document] = []
 
         # 1. Inspect attached documents for this chat
         attached_docs_summary = []
@@ -200,11 +207,42 @@ class RAGService:
                         )
                     )
 
-        # 2. Web search retrieval
+        # 3. Context-Aware Verification & Web Search Retrieval
         if enable_web_search:
-            web_results = web_search_service.search(query=query, max_results=6)
+            web_results: List[Dict[str, Any]] = []
+            is_verification = is_verification_query(query)
+
+            # Collect any embedded URLs present in retrieved document chunks
+            extracted_doc_links: List[str] = []
+            if doc_chunks:
+                for doc in doc_chunks:
+                    for u in extract_urls_from_text(doc.page_content):
+                        if u not in extracted_doc_links:
+                            extracted_doc_links.append(u)
+
+            if is_verification and doc_chunks:
+                # Formulation of targeted search queries using candidate/project/company entities from document
+                doc_preview = "\n\n".join(doc.page_content for doc in doc_chunks[:3])
+                targeted_queries, search_topic = llm_service.formulate_verification_queries(
+                    query=query,
+                    doc_context=doc_preview,
+                    extracted_links=extracted_doc_links
+                )
+                web_results = web_search_service.search_multi(targeted_queries, max_results=8)
+                if web_results:
+                    context_parts.append(
+                        f"\n### REAL-TIME VERIFICATION SEARCH EVIDENCE (Targeted Searches: {', '.join(targeted_queries)}):\n"
+                        f"DocMind investigated online presence, official profiles, and claims using targeted entity queries."
+                    )
+            else:
+                # Normal web search: distill clean topic to avoid conversational filler
+                search_topic = llm_service.extract_research_query(query)
+                search_q = search_topic if search_topic and len(search_topic) < len(query) else query
+                web_results = web_search_service.search(query=search_q, max_results=6)
+                if web_results:
+                    context_parts.append("\n### REAL-TIME WEB SEARCH EVIDENCE:")
+
             if web_results:
-                context_parts.append("\n### REAL-TIME WEB SEARCH EVIDENCE:")
                 for idx, item in enumerate(web_results, start=1):
                     w_title = item.get("title", "Web Source")
                     w_url = item.get("url", "")
@@ -224,6 +262,7 @@ class RAGService:
                     )
 
         full_context = "\n\n".join(context_parts) if context_parts else "No specific documents or web results found."
-        return full_context, citations
+        return full_context, citations, search_topic
 
 rag_service = RAGService()
+

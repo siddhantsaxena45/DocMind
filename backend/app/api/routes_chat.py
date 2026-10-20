@@ -277,7 +277,7 @@ def send_message(
     doc_ids = req.selected_doc_ids if req.selected_doc_ids is not None else conv.get("selected_doc_ids", [])
     web_enabled = req.web_search if req.web_search is not None else conv["web_search_enabled"]
 
-    context, citations = rag_service.assemble_rag_context(
+    context, citations, search_topic = rag_service.assemble_rag_context(
         query=user_text,
         user_id=current_user.user_id,
         document_ids=doc_ids,
@@ -285,7 +285,7 @@ def send_message(
     )
 
     # 5. Extract research query if web search or docs used
-    research_query = llm_service.extract_research_query(user_text) if web_enabled else None
+    research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if web_enabled else None)
 
     # 6. LLM Synthesis
     try:
@@ -391,7 +391,7 @@ async def stream_message(
     doc_ids = [d.strip() for d in selected_docs.split(",") if d.strip()] if selected_docs is not None else conv.get("selected_doc_ids", [])
     web_enabled = web_search if web_search is not None else conv["web_search_enabled"]
 
-    context, citations = rag_service.assemble_rag_context(
+    context, citations, search_topic = rag_service.assemble_rag_context(
         query=user_text,
         user_id=user_id,
         document_ids=doc_ids,
@@ -399,7 +399,7 @@ async def stream_message(
     )
 
     # Extract research query for UI status badge
-    research_query = llm_service.extract_research_query(user_text) if web_enabled else None
+    research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if web_enabled else None)
 
     async def event_generator():
         # 1. Send title if updated
@@ -517,14 +517,14 @@ def regenerate_response(
     chat_history = [{"role": r[0], "content": r[1]} for r in history_rows]
 
     # RAG Retrieval
-    context, citations = rag_service.assemble_rag_context(
+    context, citations, search_topic = rag_service.assemble_rag_context(
         query=user_text,
         user_id=current_user.user_id,
         document_ids=conv.get("selected_doc_ids", []),
         enable_web_search=conv["web_search_enabled"]
     )
 
-    research_query = llm_service.extract_research_query(user_text) if conv["web_search_enabled"] else None
+    research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if conv["web_search_enabled"] else None)
 
     # Generate fresh response
     answer = llm_service.generate_rag_response(
