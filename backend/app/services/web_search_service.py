@@ -138,6 +138,89 @@ class WebSearchService:
 
         return merged_results
 
+    def fetch_url_content(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Directly visits a live URL (e.g. GitHub profile/repo, portfolio, project website)
+        and extracts readable text, title, and key metadata for verification.
+        """
+        clean_u = url.strip()
+        if not clean_u.startswith("http://") and not clean_u.startswith("https://"):
+            clean_u = "https://" + clean_u
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+
+        try:
+            with httpx.Client(timeout=6.0, follow_redirects=True, headers=headers) as client:
+                resp = client.get(clean_u)
+                if resp.status_code != 200:
+                    return None
+
+                html_text = resp.text
+                site_name, favicon = extract_site_metadata(clean_u)
+
+                # Extract title
+                title_match = re.search(r'<title[^>]*>(.*?)</title>', html_text, re.IGNORECASE | re.DOTALL)
+                title = title_match.group(1).strip() if title_match else clean_u
+
+                # Remove scripts, styles, svg, and nav
+                clean_html = re.sub(r'<(script|style|svg|nav|footer)[^>]*>.*?</\1>', ' ', html_text, flags=re.IGNORECASE | re.DOTALL)
+
+                # Special parsing for GitHub profiles & repositories
+                extracted_lines: List[str] = []
+                if "github.com" in clean_u.lower():
+                    repo_matches = re.findall(r'href="/[^/]+/([^/"]+)"[^>]*itemprop="name codeRepository"', clean_html)
+                    if not repo_matches:
+                        repo_matches = re.findall(r'<span class="repo"[^>]*>([^<]+)</span>', clean_html)
+                    if repo_matches:
+                        extracted_lines.append(f"Public Repositories: {', '.join(set(repo_matches[:8]))}")
+
+                    bio_match = re.search(r'<div class="p-note user-profile-bio[^"]*"[^>]*>([\s\S]*?)</div>', clean_html)
+                    if bio_match:
+                        bio_text = re.sub(r'<[^>]+>', ' ', bio_match.group(1)).strip()
+                        if bio_text:
+                            extracted_lines.append(f"GitHub Bio: {bio_text}")
+
+                body_text = re.sub(r'<[^>]+>', ' ', clean_html)
+                body_text = re.sub(r'\s+', ' ', body_text).strip()
+
+                if extracted_lines:
+                    snippet = " | ".join(extracted_lines) + " — " + body_text[:600]
+                else:
+                    snippet = body_text[:900]
+
+                return {
+                    "url": clean_u,
+                    "title": title[:100],
+                    "snippet": snippet,
+                    "site_name": site_name,
+                    "favicon": favicon,
+                    "type": "web"
+                }
+        except Exception as e:
+            logger.warning(f"Could not fetch live content for {clean_u}: {e}")
+            return None
+
+    def fetch_multiple_urls(self, urls: List[str], max_urls: int = 3) -> List[Dict[str, Any]]:
+        """
+        Fetches live web content from multiple target URLs in sequence.
+        """
+        results: List[Dict[str, Any]] = []
+        seen = set()
+        for u in urls:
+            if not u or u.lower() in seen:
+                continue
+            seen.add(u.lower())
+            res = self.fetch_url_content(u)
+            if res:
+                results.append(res)
+            if len(results) >= max_urls:
+                break
+        return results
+
 
 web_search_service = WebSearchService()
+
 

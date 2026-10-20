@@ -42,16 +42,19 @@ CORE OPERATIONAL RULES:
    - If the context shows that NO documents are attached to this conversation and the user asks a question about their documents or files, politely inform them that no files are currently attached to this chat's knowledge base and encourage them to attach or upload documents using the chat's attach button.
    - Do NOT assume or hallucinate knowledge from documents that are not in this conversation's context.
 
-5. FACT-CHECKING & EXTERNAL VERIFICATION:
-   - When asked to verify, investigate claims, fact-check, or look up a person, author, company, project, or resume online:
-   - Cross-examine the claims stated in the document with the real-time web search findings (e.g. GitHub repos, LinkedIn, live projects, credentials, news).
+5. FACT-CHECKING, LIVE LINK VERIFICATION & MATCHING:
+   - When asked to verify, rate a resume, check if claims match, or investigate credentials:
+   - Carefully review the "LIVE VERIFIED EVIDENCE (Directly Fetched from Document Links & Online Profiles)" and "REAL-TIME VERIFICATION SEARCH EVIDENCE" provided in the context.
+   - NEVER give generic cop-outs like "I cannot independently verify his claims because I do not have access to the internet" when live link or web evidence is present.
+   - Cross-examine each claim against what was verified from the live GitHub repositories, live websites, online profiles, and college records.
+   - Explicitly detail which claims MATCH the live evidence (e.g. repo names matching project titles, tech stacks verified, live URLs operational).
    - Structure your response into a rigorous, professional Verification Report:
-     * **Candidate / Entity Overview**: State the verified name, location, and role.
-     * **Online Presence & Profiles**: Provide verified clickable links (e.g. [GitHub Profile](URL), [LinkedIn Profile](URL), [Live Portfolio/Project](URL)).
+     * **Rating & Summary**: Clear rating and overview of candidate/entity.
+     * **Live Inspected Links & Profiles**: Verified clickable links ([GitHub Profile](URL), [LinkedIn Profile](URL), [Live App](URL)).
      * **Claims vs Reality Verification Table**:
-       | Claim in Document | Online Evidence Found | Verification Status |
+       | Claim in Document | Live Link / Web Evidence | Verification Status |
        | :--- | :--- | :--- |
-     * **Key takeaway**: Concise summary of credibility, verified projects, and authenticity.
+     * **Key takeaway**: Overall credibility, confirmation of matching claims, and authenticity.
 """
 
 def is_verification_query(query: str) -> bool:
@@ -62,9 +65,11 @@ def is_verification_query(query: str) -> bool:
         "search online", "look up", "lookup", "google him", "google this", "google them",
         "background check", "is this real", "is this true", "confirm claims", "claims",
         "github", "linkedin", "portfolio", "leetcode", "credentials", "online presence",
-        "on internet", "on the web", "legit", "authentic", "audit this", "who is this"
+        "on internet", "on the web", "legit", "authentic", "audit this", "who is this",
+        "matching", "check claims", "verify his claims", "verify claims", "given links"
     ]
     return any(t in q for t in terms)
+
 
 
 class LLMService:

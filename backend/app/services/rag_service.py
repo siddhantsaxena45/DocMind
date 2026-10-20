@@ -212,7 +212,7 @@ class RAGService:
             web_results: List[Dict[str, Any]] = []
             is_verification = is_verification_query(query)
 
-            # Collect any embedded URLs present in retrieved document chunks
+            # Collect any embedded URLs present in retrieved document chunks and full_text
             extracted_doc_links: List[str] = []
             if doc_chunks:
                 for doc in doc_chunks:
@@ -220,7 +220,25 @@ class RAGService:
                         if u not in extracted_doc_links:
                             extracted_doc_links.append(u)
 
-            if is_verification and doc_chunks:
+            if document_ids:
+                try:
+                    c_conn = get_db_conn()
+                    c_cur = c_conn.cursor()
+                    c_cur.execute(
+                        "SELECT full_text FROM documents WHERE user_id = %s AND id = ANY(%s)",
+                        (user_id, document_ids)
+                    )
+                    for f_row in c_cur.fetchall():
+                        if f_row[0]:
+                            for u in extract_urls_from_text(f_row[0]):
+                                if u not in extracted_doc_links:
+                                    extracted_doc_links.append(u)
+                    c_cur.close()
+                    c_conn.close()
+                except Exception:
+                    pass
+
+            if is_verification and (doc_chunks or extracted_doc_links):
                 # Formulation of targeted search queries using candidate/project/company entities from document
                 doc_preview = "\n\n".join(doc.page_content for doc in doc_chunks[:3])
                 targeted_queries, search_topic = llm_service.formulate_verification_queries(
@@ -234,6 +252,41 @@ class RAGService:
                         f"\n### REAL-TIME VERIFICATION SEARCH EVIDENCE (Targeted Searches: {', '.join(targeted_queries)}):\n"
                         f"DocMind investigated online presence, official profiles, and claims using targeted entity queries."
                     )
+
+                # DEEP LIVE LINK INSPECTION: Directly visit and fetch content from document links & discovered profiles
+                verification_urls = []
+                for l in extracted_doc_links:
+                    if l not in verification_urls:
+                        verification_urls.append(l)
+                for w in web_results:
+                    w_url = w.get("url", "")
+                    if any(dom in w_url.lower() for dom in ["github.com", "linkedin.com", "leetcode.com", "sidcode.ai", "vercel.app", "portfolio"]):
+                        if w_url not in verification_urls:
+                            verification_urls.append(w_url)
+
+                if verification_urls:
+                    live_fetched_sources = web_search_service.fetch_multiple_urls(verification_urls[:4])
+                    if live_fetched_sources:
+                        context_parts.append(
+                            "\n### LIVE VERIFIED EVIDENCE (Directly Fetched from Document Links & Online Profiles):\n"
+                            "DocMind directly visited the live web pages to check if the claims in the document match what is live:"
+                        )
+                        for l_idx, live_item in enumerate(live_fetched_sources, start=1):
+                            l_url = live_item.get("url", "")
+                            l_title = live_item.get("title", "")
+                            l_snippet = live_item.get("snippet", "")
+                            context_parts.append(
+                                f"[[LIVE_LINK_{l_idx}]] Target URL: {l_url}\nPage Title: {l_title}\nLive Content:\n{l_snippet}"
+                            )
+                            if not any(c.url == l_url for c in citations):
+                                citations.insert(0, Citation(
+                                    title=l_title,
+                                    url=l_url,
+                                    snippet=l_snippet[:300],
+                                    site_name=live_item.get("site_name") or "Verified Link",
+                                    favicon=live_item.get("favicon"),
+                                    type="web"
+                                ))
             else:
                 # Normal web search: distill clean topic to avoid conversational filler
                 search_topic = llm_service.extract_research_query(query)
