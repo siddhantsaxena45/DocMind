@@ -9,6 +9,30 @@ from app.services.document_service import extract_urls_from_text
 from app.core.database import get_db_conn
 from app.api.models import Citation
 
+def format_url_title(url: str, site_name: str) -> str:
+    u = url.lower()
+    if "github.com/" in u:
+        parts = [p for p in url.split("github.com/")[-1].strip("/").split("/") if p]
+        return f"GitHub: {parts[-1]}" if parts else "GitHub Profile"
+    elif "linkedin.com/in/" in u:
+        return "LinkedIn Profile"
+    elif "leetcode.com/" in u:
+        return "LeetCode Profile"
+    elif "portfolio" in u or "wtlpzutle5" in u:
+        return "Personal Portfolio"
+    elif "sidcode" in u:
+        return "SidCode.AI Platform"
+    elif "lumina" in u or "ai-interviewer" in u:
+        return "Lumina AI Project"
+    elif "zocial" in u:
+        return "Zocial App"
+    elif "docmind" in u or "doc-mind" in u:
+        return "DocMind App"
+    elif site_name and site_name != "Web":
+        return site_name
+    return url[:45]
+
+
 class RAGService:
     def __init__(self):
         self.rrf_k = 60
@@ -87,7 +111,6 @@ class RAGService:
         Strictly limits search to `document_ids` if provided. If document_ids is an empty list,
         returns no documents.
         """
-        # If an empty list of document_ids is provided, this chat has 0 documents attached
         if document_ids is not None and len(document_ids) == 0:
             return []
 
@@ -124,7 +147,6 @@ class RAGService:
             doc_map[key] = doc
             rrf_scores[key] = rrf_scores.get(key, 0.0) + (1.0 / (self.rrf_k + rank + 1))
 
-        # Sort by merged RRF score
         sorted_keys = sorted(rrf_scores.keys(), key=lambda k: rrf_scores[k], reverse=True)
         return [doc_map[k] for k in sorted_keys[:top_k]]
 
@@ -142,10 +164,13 @@ class RAGService:
         or projects from attached documents.
         Returns: (full_context, citations, search_topic).
         """
-        citations: List[Citation] = []
         context_parts: List[str] = []
         search_topic: Optional[str] = None
         doc_chunks: List[Document] = []
+        doc_citations: List[Citation] = []
+        web_citations: List[Citation] = []
+        live_fetched_sources: List[Dict[str, Any]] = []
+        web_results: List[Dict[str, Any]] = []
 
         # 1. Inspect attached documents for this chat
         attached_docs_summary = []
@@ -178,7 +203,7 @@ class RAGService:
                 "no documents are attached to this chat and prompt them to attach or upload documents using the Paperclip / Attach button."
             )
 
-        # 2. Document retrieval (only if document_ids is None or contains IDs)
+        # 2. Document retrieval
         if document_ids is None or len(document_ids) > 0:
             doc_chunks = self.hybrid_retrieve(
                 query=query,
@@ -187,6 +212,7 @@ class RAGService:
                 top_k=6
             )
 
+            seen_doc_pages = set()
             if doc_chunks:
                 context_parts.append("### USER DOCUMENTS EVIDENCE:")
                 for idx, doc in enumerate(doc_chunks, start=1):
@@ -197,49 +223,50 @@ class RAGService:
                     context_parts.append(
                         f"[[DOCUMENT_REF_{idx}]] File: {fname} (Page {page}):\n{text}"
                     )
-                    citations.append(
-                        Citation(
-                            title=f"{fname} (Page {page})",
-                            site_name=fname,
-                            page=page,
-                            snippet=text[:300],
-                            type="doc"
+                    page_key = f"{fname}_{page}"
+                    if page_key not in seen_doc_pages and len(doc_citations) < 2:
+                        seen_doc_pages.add(page_key)
+                        doc_citations.append(
+                            Citation(
+                                title=f"{fname} (Page {page})",
+                                site_name=fname,
+                                page=page,
+                                snippet=text[:300],
+                                type="doc"
+                            )
                         )
-                    )
 
         # 3. Context-Aware Verification & Web Search Retrieval
+        # Collect any embedded URLs present in retrieved document chunks and full_text
+        extracted_doc_links: List[str] = []
+        if doc_chunks:
+            for doc in doc_chunks:
+                for u in extract_urls_from_text(doc.page_content):
+                    if u not in extracted_doc_links:
+                        extracted_doc_links.append(u)
+
+        if document_ids:
+            try:
+                c_conn = get_db_conn()
+                c_cur = c_conn.cursor()
+                c_cur.execute(
+                    "SELECT full_text FROM documents WHERE user_id = %s AND id = ANY(%s)",
+                    (user_id, document_ids)
+                )
+                for f_row in c_cur.fetchall():
+                    if f_row[0]:
+                        for u in extract_urls_from_text(f_row[0]):
+                            if u not in extracted_doc_links:
+                                extracted_doc_links.append(u)
+                c_cur.close()
+                c_conn.close()
+            except Exception:
+                pass
+
         if enable_web_search:
-            web_results: List[Dict[str, Any]] = []
             is_verification = is_verification_query(query)
 
-            # Collect any embedded URLs present in retrieved document chunks and full_text
-            extracted_doc_links: List[str] = []
-            if doc_chunks:
-                for doc in doc_chunks:
-                    for u in extract_urls_from_text(doc.page_content):
-                        if u not in extracted_doc_links:
-                            extracted_doc_links.append(u)
-
-            if document_ids:
-                try:
-                    c_conn = get_db_conn()
-                    c_cur = c_conn.cursor()
-                    c_cur.execute(
-                        "SELECT full_text FROM documents WHERE user_id = %s AND id = ANY(%s)",
-                        (user_id, document_ids)
-                    )
-                    for f_row in c_cur.fetchall():
-                        if f_row[0]:
-                            for u in extract_urls_from_text(f_row[0]):
-                                if u not in extracted_doc_links:
-                                    extracted_doc_links.append(u)
-                    c_cur.close()
-                    c_conn.close()
-                except Exception:
-                    pass
-
             if is_verification and (doc_chunks or extracted_doc_links):
-                # Formulation of targeted search queries using candidate/project/company entities from document
                 doc_preview = "\n\n".join(doc.page_content for doc in doc_chunks[:3])
                 targeted_queries, search_topic = llm_service.formulate_verification_queries(
                     query=query,
@@ -256,7 +283,7 @@ class RAGService:
                 # DEEP LIVE LINK INSPECTION: Directly visit and fetch content from document links & discovered profiles
                 verification_urls = []
                 for l in extracted_doc_links:
-                    if l not in verification_urls:
+                    if l not in verification_urls and not l.startswith("mailto:"):
                         verification_urls.append(l)
                 for w in web_results:
                     w_url = w.get("url", "")
@@ -278,17 +305,7 @@ class RAGService:
                             context_parts.append(
                                 f"[[LIVE_LINK_{l_idx}]] Target URL: {l_url}\nPage Title: {l_title}\nLive Content:\n{l_snippet}"
                             )
-                            if not any(c.url == l_url for c in citations):
-                                citations.insert(0, Citation(
-                                    title=l_title,
-                                    url=l_url,
-                                    snippet=l_snippet[:300],
-                                    site_name=live_item.get("site_name") or "Verified Link",
-                                    favicon=live_item.get("favicon"),
-                                    type="web"
-                                ))
             else:
-                # Normal web search: distill clean topic to avoid conversational filler
                 search_topic = llm_service.extract_research_query(query)
                 search_q = search_topic if search_topic and len(search_topic) < len(query) else query
                 web_results = web_search_service.search(query=search_q, max_results=6)
@@ -303,19 +320,66 @@ class RAGService:
                     context_parts.append(
                         f"[[WEB_REF_{idx}]] Title: {w_title}\nURL: {w_url}\nSnippet: {w_snippet}"
                     )
-                    citations.append(
-                        Citation(
-                            title=w_title,
-                            url=w_url,
-                            snippet=w_snippet[:300],
-                            site_name=item.get("site_name") or "Web",
-                            favicon=item.get("favicon"),
-                            type="web"
-                        )
+
+        # 4. Assemble Rich Citations: Web & Verified Link Cards FIRST, followed by Document Cards
+        seen_urls = set()
+
+        # 4a. Add live fetched verified sources
+        for live_item in live_fetched_sources:
+            l_url = live_item.get("url", "").rstrip("/")
+            if l_url and l_url.lower() not in seen_urls:
+                seen_urls.add(l_url.lower())
+                web_citations.append(
+                    Citation(
+                        title=live_item.get("title") or format_url_title(l_url, live_item.get("site_name", "")),
+                        url=l_url,
+                        snippet=live_item.get("snippet", "")[:300],
+                        site_name=live_item.get("site_name") or "Verified Link",
+                        favicon=live_item.get("favicon"),
+                        type="web"
                     )
+                )
+
+        # 4b. Add all extracted links from the document (GitHub, LinkedIn, Portfolio, Projects, etc.)
+        for raw_url in extracted_doc_links:
+            clean_u = raw_url.strip().rstrip("/")
+            if clean_u and clean_u.lower() not in seen_urls and not clean_u.startswith("mailto:"):
+                seen_urls.add(clean_u.lower())
+                site_name, favicon = extract_site_metadata(clean_u)
+                card_title = format_url_title(clean_u, site_name)
+                web_citations.append(
+                    Citation(
+                        title=card_title,
+                        url=clean_u,
+                        snippet=f"Verified online link referenced in document: {clean_u}",
+                        site_name=site_name,
+                        favicon=favicon,
+                        type="web"
+                    )
+                )
+
+        # 4c. Add search results from DuckDuckGo
+        for item in web_results:
+            w_url = item.get("url", "").rstrip("/")
+            if w_url and w_url.lower() not in seen_urls:
+                seen_urls.add(w_url.lower())
+                web_citations.append(
+                    Citation(
+                        title=item.get("title", "Web Source"),
+                        url=w_url,
+                        snippet=item.get("snippet", "")[:300],
+                        site_name=item.get("site_name") or "Web",
+                        favicon=item.get("favicon"),
+                        type="web"
+                    )
+                )
+
+        # Final balanced citations: Web/Link cards prominent, followed by document reference
+        citations = web_citations + doc_citations
 
         full_context = "\n\n".join(context_parts) if context_parts else "No specific documents or web results found."
         return full_context, citations, search_topic
 
 rag_service = RAGService()
+
 
