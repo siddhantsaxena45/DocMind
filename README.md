@@ -2,7 +2,8 @@
 
 # 🧠 DocMind AI
 
-### Enterprise-Grade Conversational Intelligence Platform with Per-Chat Isolated Knowledge Bases, Hybrid RAG, Gemini Vision OCR, Real-Time Web Search & Public Chat Sharing
+### State-of-the-Art Agentic Document Intelligence & Real-Time Research Engine
+**Perplexity-Style Interface • Universal Multi-Doc Inline Hyperlinks • Context-Aware Verification Search • Live URL Inspection • Hybrid RRF • 100% Free-Tier Architecture**
 
 <p align="center">
   <img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 19" />
@@ -10,14 +11,14 @@
   <img src="https://img.shields.io/badge/Tailwind_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS v4" />
   <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/Python_3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+" />
-  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Supabase_PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Pinecone_Serverless-000000?style=for-the-badge&logo=pinecone&logoColor=white" alt="Pinecone" />
-  <img src="https://img.shields.io/badge/Google_Gemini_2.5-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini" />
+  <img src="https://img.shields.io/badge/Google_Gemini_2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini" />
   <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
 </p>
 
 <p align="center">
-  <strong>DocMind AI</strong> is a full-stack, production-ready research and document intelligence platform inspired by ChatGPT and Claude. It combines <strong>Per-Chat Dedicated Knowledge Bases</strong>, <strong>Hybrid Vector & Lexical RAG (RRF)</strong>, <strong>Gemini Vision Multimodal OCR</strong>, <strong>Live DuckDuckGo Web Search</strong>, <strong>SSE Token Streaming</strong>, and <strong>Cryptographic Snapshot Sharing</strong>.
+  <strong>DocMind AI</strong> is an advanced research and document intelligence platform modeled after <strong>Perplexity AI</strong>. It combines <strong>Per-Chat Isolated Knowledge Bases</strong>, <strong>Universal Inline Hyperlink Parsing across all document formats</strong>, <strong>Autonomous Live URL Scraping & Inspection</strong>, <strong>Context-Aware Claim Verification</strong>, <strong>Hybrid Vector & Lexical RAG (RRF)</strong>, <strong>Gemini Multimodal OCR</strong>, <strong>Free DuckDuckGo Web Search</strong>, and <strong>Automated Multi-Key API Rotation</strong>.
 </p>
 
 </div>
@@ -26,141 +27,159 @@
 
 ## 📑 Table of Contents
 
-- [Key Architecture & Capabilities](#-key-architecture--capabilities)
-  - [1. Per-Chat Isolated Knowledge Bases](#1-per-chat-isolated-knowledge-bases)
-  - [2. Advanced Hybrid RAG Engine (RRF)](#2-advanced-hybrid-rag-engine-rrf)
-  - [3. Multi-Format Ingestion & Gemini Vision OCR](#3-multi-format-ingestion--gemini-vision-ocr)
-  - [4. Real-Time Web Search & Grounded Citations](#4-real-time-web-search--grounded-citations)
-  - [5. Server-Sent Events (SSE) Streaming](#5-server-sent-events-sse-streaming)
-  - [6. Public Chat Snapshots & Instant Revocation](#6-public-chat-snapshots--instant-revocation)
-  - [7. Enterprise Multi-Tenant Security](#7-enterprise-multi-tenant-security)
-- [System Architecture](#-system-architecture)
-- [Technology Stack](#-technology-stack)
-- [Project Structure](#-project-structure)
-- [REST & Streaming API Reference](#-rest--streaming-api-reference)
-- [Getting Started](#-getting-started)
+- [🌟 Core Capabilities & Agentic Features](#-core-capabilities--agentic-features)
+  - [1. Perplexity-Style Research Experience](#1-perplexity-style-research-experience)
+  - [2. Universal Inline Hyperlink Parsing Across ALL Document Types](#2-universal-inline-hyperlink-parsing-across-all-document-types)
+  - [3. Context-Aware Verification Search](#3-context-aware-verification-search)
+  - [4. Autonomous Live URL Inspection & Code Verification](#4-autonomous-live-url-inspection--code-verification)
+  - [5. Hybrid Search Pipeline (Vector + BM25 + RRF)](#5-hybrid-search-pipeline-vector--bm25--rrf)
+  - [6. Multi-Key API Key Rotation (100% Free Tier Resilient)](#6-multi-key-api-key-rotation-100-free-tier-resilient)
+  - [7. Per-Chat Isolated Knowledge Bases](#7-per-chat-isolated-knowledge-bases)
+  - [8. Row-Level Security (RLS) & Multi-Tenant Shield](#8-row-level-security-rls--multi-tenant-shield)
+- [🏗️ System Architecture & Workflow Pipeline](#️-system-architecture--workflow-pipeline)
+- [💻 Technology Stack](#-technology-stack)
+- [📁 Project Structure](#-project-structure)
+- [🚀 Quickstart & Installation](#-quickstart--installation)
   - [Prerequisites](#prerequisites)
-  - [Backend Setup](#1-backend-setup)
-  - [Frontend Setup](#2-frontend-setup)
-- [Deployment Guide](#-deployment-guide)
-  - [Frontend (Vercel SPA Routing)](#frontend-vercel-deployment)
-  - [Backend (Render / Railway / VPS)](#backend-deployment)
-- [Testing & Quality Assurance](#-testing--quality-assurance)
-- [License](#-license)
+  - [1. Environment Configuration](#1-environment-configuration)
+  - [2. Backend Setup](#2-backend-setup)
+  - [3. Frontend Setup](#3-frontend-setup)
+- [🌐 Deployment Guide](#-deployment-guide)
+  - [Frontend Deployment (Vercel)](#frontend-deployment-vercel)
+  - [Backend Deployment (Render / Railway / VPS)](#backend-deployment-render--railway--vps)
+  - [Database Setup (Supabase)](#database-setup-supabase)
+- [📡 API & Streaming Reference](#-api--streaming-reference)
+- [📄 License & Author](#-license--author)
 
 ---
 
-## 🌟 Key Architecture & Capabilities
+## 🌟 Core Capabilities & Agentic Features
 
-### 1. Per-Chat Isolated Knowledge Bases
-- **Context Isolation:** Unlike naive chatbots where all uploaded files are searched globally, DocMind gives **every conversation its own personal knowledge base**.
-- **Zero Cross-Chat Bleed:** Chat A discussing `biology_notes.pdf` will never see, retrieve, or hallucinate data from Chat B's `financial_report.xlsx`.
-- **Active Document Scope Chips:** Live chips directly above the message input bar show exactly which documents the AI can access, with one-click detaching (`✕`).
-- **One-Click Library Attachment:** Effortlessly attach existing documents from your library into the current chat, or upload new files directly into the active conversation.
-- **Sidebar Scoping Indicators:** Displays document count badges (`📄 2`) on each conversation item and highlights library documents currently active `in chat`.
+### 1. Perplexity-Style Research Experience
+- **Collapsible Research Status Bar:** Displays the distilled research topic (e.g. `Researched Siddhant Saxena & Projects`), execution checkmark, total sources count, and an **overlapping stacked favicon pill stack** `(O)(M)(R) +6`.
+- **Perplexity Source Cards Carousel:** Horizontally scrollable row of sleek dark cards with high-resolution domain favicons (via Google Favicon CDN), subreddit pills (`💬 r/Twitch`, `💬 r/youtube`), document page markers (`p.1`), 2-line title clamps, and a `View all →` modal drawer.
+- **Rich Markdown Tables & Key Takeaways:** Automatically synthesizes comparisons, metrics, financial breakdowns, and verification statuses into clean GitHub Flavored Markdown (GFM) tables with alternating row highlights and bold `**Key takeaway:**` callouts.
+- **Interactive Follow-up Question Pills:** Dynamically generates 3–4 contextually relevant follow-up questions formatted with curved reply arrows (`↳ Elaborate`, `↳ Compare with...`) that submit on click.
+- **Action Toolbar:** One-click copy with feedback icon, Try Again / Regenerate, and Thumbs Up / Down ratings.
 
-### 2. Advanced Hybrid RAG Engine (RRF)
-- **Dense Vector Search:** Employs Pinecone Serverless vector indexing with Google Gemini embeddings (`gemini-embedding-001`).
-- **Matryoshka Dimension Adapter:** Dynamically adapts embedding vectors down to the exact Pinecone index dimensions (e.g., 1024) while preserving unit L2 normalization.
-- **Lexical BM25 Database Retrieval:** Executes full-text term scoring over document paragraphs in PostgreSQL.
-- **Reciprocal Rank Fusion (RRF):** Merges dense semantic hits and lexical keyword hits using $RRF(k=60)$ scoring:
-  $$RRF\_Score(d) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
-  Ensures exact keyword matches (part numbers, technical jargon) and high-level conceptual questions both achieve optimal recall.
+### 2. Universal Inline Hyperlink Parsing Across ALL Document Types
+In standard RAG systems, embedded hyperlinks in documents are completely lost during text extraction. DocMind solves this universally:
+- **PDFs & LaTeX / Overleaf (`.pdf`):** Extracts PDF annotation objects (`/Annots` $\to$ `/Subtype == /Link` $\to$ `/A` $\to$ `/URI`) and inlines them directly into the respective page text (`[Page 1 Embedded Links: ...]`). Page chunks in Pinecone retain all clickable URLs.
+- **Word Documents (`.docx`):** Parses OpenXML relationship trees (`word/_rels/document.xml.rels`), mapping relationship IDs (`rIdX`) to target URLs and inlines `<w:hyperlink>` elements as `[Text](url)`.
+- **PowerPoint Decks (`.pptx`):** Inspects slide relationships (`slideN.xml.rels`) to preserve slide-level hyperlinks and plaintext URLs.
+- **Excel Spreadsheets (`.xlsx`):** Inspects `cell.hyperlink.target` and inlines links next to cell values (`Value (https://...)`).
+- **Plaintext & Markdown (`.txt`, `.md`, `.csv`):** Extracts Markdown syntax `[title](url)` and plaintext domain handles (GitHub, LinkedIn, LeetCode, Kaggle, HuggingFace).
+- **Scanned Images & Receipts (`.png`, `.jpg`, `.webp`):** Uses Google Gemini 2.5 Flash Multimodal Vision OCR to extract text and links from image files.
 
-### 3. Multi-Format Ingestion & Gemini Vision OCR
-- **PDF (`.pdf`):** Extracts text page-by-page to generate exact page-level citations (`[Doc: manual.pdf, Page 4]`).
-- **Word Documents (`.docx`, `.doc`):** Extracts headings, paragraphs, and structured table data.
-- **PowerPoint (`.pptx`, `.ppt`):** Extracts slide text while tracking slide numbering.
-- **Excel & Spreadsheets (`.xlsx`, `.xls`, `.csv`):** Converts multi-sheet data into formatted Markdown tables.
-- **Images & Scans (`.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`):** Uses Google Gemini 2.5 Flash Multimodal Vision OCR to extract text from handwritten notes, receipts, whiteboard diagrams, and photographed documents.
-- **Text & Code (`.txt`, `.md`, `.json`, etc.):** Direct Latin-1/UTF-8 stream parsing with recursive chunking.
+### 3. Context-Aware Verification Search
+When a user asks to *"verify his claims on internet"*, *"check his resume on google"*, or *"audit this company"*:
+- **No More Naive Prompts:** A basic chatbot searches the literal words *"verify his claims on internet"* on DuckDuckGo and gets generic HR articles.
+- **Targeted Entity Formulation:** DocMind reads the retrieved document context, identifies proper nouns, usernames, and projects (e.g. `Siddhant Saxena`, `Jaypee Institute`, `DocMind`, `SidCode.AI`), and autonomously formulates **1 to 3 surgical search queries** (e.g. `'Siddhant Saxena' 'Jaypee Institute'`, `'siddhantsaxena45' github`, `'SidCode.AI'`).
+- **Multi-Query Deduplicated Search:** Executes searches in parallel, deduplicating by URL and attaching live domain favicons.
 
-### 4. Real-Time Web Search & Grounded Citations
-- **DuckDuckGo Live Search:** Instant search retrieval with snippet parsing when the Web Search toggle is active.
-- **Anti-Hallucination Grounding:** System prompts enforce strict grounding. Every factual claim is referenced inline:
-  - Document sources: `[Doc: filename, Page X]`
-  - Web sources: `[Source Title](URL)`
-- If evidence is insufficient, DocMind explicitly states what is known and highlights gaps instead of fabricating answers.
+### 4. Autonomous Live URL Inspection & Code Verification
+- **Deep Web Fetcher (`fetch_url_content`):** The backend physically connects to and fetches the live web page HTML for links found in the document (GitHub profiles, live project URLs, portfolios).
+- **GitHub Profile & Repository Parsing:** Automatically extracts public repository names, project descriptions, programming languages, and GitHub bio.
+- **Live Claims Cross-Examination:** Compares claims made in the document (e.g. *"Developed DocMind RAG using FastAPI and Pinecone"*) against what is live in the candidate's GitHub repositories, producing a structured verification report.
 
-### 5. Server-Sent Events (SSE) Streaming
-- **Real-Time Token Flow:** Streams tokens with low latency using FastAPI `StreamingResponse` and the native Fetch Streams API.
-- **Stop Generation:** AbortController support allows users to instantly stop streaming at any time.
-- **Auto-Titling:** After the first user message, Gemini generates a concise 3–5 word title and streams the update to the UI.
-- **Response Regeneration:** One-click response regeneration recalculates RAG evidence and produces a fresh answer.
+### 5. Hybrid Search Pipeline (Vector + BM25 + RRF)
+- **Dense Vector Search:** 768-dimensional semantic embeddings generated via Google `text-embedding-004` stored in Pinecone Serverless.
+- **Sparse BM25 Keyword Search:** Full-text lexical search querying PostgreSQL paragraphs to guarantee exact matches on project names, acronyms, and technical terms.
+- **Reciprocal Rank Fusion (RRF):** Fuses both ranks with $RRF(k=60)$ scoring:
+  $$RRF\_Score(d) = \sum_{m \in M} \frac{1}{60 + r_m(d)}$$
 
-### 6. Public Chat Snapshots & Instant Revocation
-- **Secure Share Links:** Generates cryptographically secure public snapshots (`/share/:token`) using URL-safe tokens.
-- **Private Data Shield:** Only the conversation transcript is exposed; underlying raw files, vector embeddings, and user credentials remain strictly confidential.
-- **Instant Revocation:** Owners can revoke public access with one click, immediately returning `404 Not Found`.
-- **Guest Read-Only Viewer:** Dedicated responsive view with Prism code highlighting, copy buttons, and citation links.
-- **Vercel SPA Routing:** Pre-configured with `vercel.json` SPA rewrites so direct navigation and refreshes on `/share/:token` load without 404 errors.
+### 6. Multi-Key API Key Rotation (100% Free Tier Resilient)
+- **Zero Cost Architecture:** Built entirely on free-tier services (Google Gemini API free tier, Pinecone serverless free tier, Supabase free PostgreSQL, DuckDuckGo free search).
+- **Thread-Safe Round-Robin Key Rotator:** Reads `GOOGLE_API_KEY1` through `GOOGLE_API_KEY20`. Every request shifts to the next key.
+- **Automatic 429 Recovery:** If a Google API key hits a rate limit or resource exhaustion (`RESOURCE_EXHAUSTED` / `429`), DocMind catches the error and retries the next key in the pool with zero downtime.
 
-### 7. Enterprise Multi-Tenant Security
-- **JWT Authentication:** Strict authorization headers (`Bearer <token>`) guarding all API endpoints.
-- **PBKDF2 Password Hashing:** Cryptographically salted password protection via Passlib.
-- **Pinecone Multi-Tenancy:** Complete vector partition isolation using `namespace = user_id`.
-- **Relational Ownership Checks:** Strict row-level validation on every database query.
+### 7. Per-Chat Isolated Knowledge Bases
+- **Zero Cross-Chat Bleed:** Files uploaded to Chat A belong exclusively to Chat A. Chat B cannot see, retrieve, or cite them.
+- **Scoping Chips:** Interactive document chips above the input bar show active files, allowing one-click attachment or removal (`✕`).
+- **Empty State Guard:** If a chat has zero documents attached, DocMind prompts the user to attach documents rather than hallucinating answers.
+
+### 8. Row-Level Security (RLS) & Multi-Tenant Shield
+- All core Supabase PostgreSQL tables (`users`, `documents`, `conversations`, `messages`, `shared_conversations`) are protected with **Row Level Security (RLS)**.
+- Unauthorized public access via PostgREST / Supabase URLs is strictly denied.
+- Passwords hashed using cryptographically salted PBKDF2/bcrypt via Passlib.
+- Endpoints secured with short-lived JWT tokens (`HS256`).
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ System Architecture & Workflow Pipeline
 
-```mermaid
-flowchart TD
-    subgraph Client["Frontend (React 19 + Vite 7 + Tailwind v4)"]
-        UI["ChatGPT-Style Interface"]
-        KB["Chat Knowledge Base Manager"]
-        SSE_C["SSE Streaming Reader"]
-    end
+```text
+[ User Uploads Document: PDF / DOCX / PPTX / XLSX / Image ]
+                           │
+                           ▼
+     [ Universal Document Parser (document_service.py) ]
+     ├─ Extracts text page-by-page
+     ├─ Extracts PDF /Annots /URI hyperlinks
+     ├─ Extracts Word rels (document.xml.rels)
+     ├─ Inlines [Page X Embedded Links: ...] into text
+     └─ Gemini Multimodal Vision OCR (for images)
+                           │
+                           ▼
+           [ Recursive Chunking (800 / 120) ]
+                           │
+              ┌────────────┴────────────┐
+              ▼                         ▼
+   [ Pinecone Serverless ]      [ Supabase PostgreSQL ]
+    Dense Vector Indexing        Full Text & Metadata
+    (User Isolated Namespace)    (Row Level Security)
 
-    subgraph Server["Backend API (FastAPI)"]
-        Auth["JWT & PBKDF2 Auth Service"]
-        ChatRouter["Conversations & Chat Router"]
-        DocRouter["Document Ingestion Router"]
-        ShareRouter["Public Snapshot Router"]
-    end
+──────────────────────────────────────────────────────────
 
-    subgraph Intelligence["DocMind Intelligence Engine"]
-        Parser["Multi-Format Parser & Vision OCR"]
-        RAG["Hybrid RAG Service (RRF k=60)"]
-        LLM["Gemini 2.5 LLM Service (Rotator)"]
-        WebSearch["DuckDuckGo Live Search"]
-    end
-
-    subgraph Storage["Databases & Infrastructure"]
-        PG[("PostgreSQL<br/>(Users, Chats, Docs)")]
-        PC[("Pinecone Serverless<br/>(namespace = user_id)")]
-    end
-
-    UI -->|"Auth & Prompts"| Server
-    KB -->|"Attach / Detach Docs"| ChatRouter
-    DocRouter -->|"Raw File Ingestion"| Parser
-    Parser -->|"Embeddings"| PC
-    Parser -->|"Metadata & Text"| PG
-    ChatRouter -->|"Retrieve Evidence"| RAG
-    RAG -->|"Vector Search (Filtered)"| PC
-    RAG -->|"BM25 Search (Filtered)"| PG
-    RAG -->|"Web Query"| WebSearch
-    RAG -->|"Unified Context"| LLM
-    LLM -->|"SSE Token Stream"| SSE_C
+[ User Asks Question / "Verify his claims on internet" ]
+                           │
+                           ▼
+          [ Hybrid Search Engine (RRF k=60) ]
+     ├─ Dense Vector Search (Pinecone)
+     ├─ Keyword Search (PostgreSQL)
+     └─ Reciprocal Rank Fusion Merging
+                           │
+                           ▼
+      [ Context-Aware Verification & Link Inspector ]
+     ├─ Detects verification intent (is_verification_query)
+     ├─ Formulates targeted queries ("Siddhant Saxena" github)
+     ├─ Executes multi-query DuckDuckGo search
+     └─ Deep Web Fetcher visits candidate GitHub & live URLs
+                           │
+                           ▼
+          [ LLM Synthesis (Gemini 2.5 Flash) ]
+     ├─ Rotates API Keys (Key 1 → Key 20)
+     ├─ Synthesizes Markdown comparison tables & callouts
+     ├─ Cites inline: [Doc: file, Page X] and [Title](URL)
+     └─ Generates 3-4 interactive follow-up questions
+                           │
+                           ▼
+    [ Server-Sent Events (SSE) Streaming to React UI ]
+     ├─ event: research  (Status bar & Favicons stack)
+     ├─ event: citations (Perplexity source cards)
+     ├─ event: chunk     (Real-time token stream)
+     └─ event: related   (Follow-up suggestion pills)
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 💻 Technology Stack
 
-| Layer | Technologies | Purpose |
-|---|---|---|
-| **Frontend Framework** | **React 19**, **Vite 7** | High-performance SPA with client-side routing |
-| **Styling & UI** | **Tailwind CSS v4**, **Framer Motion**, **Lucide Icons** | Dark-mode interface, glassmorphism, animations |
-| **Markdown & Code** | **React Markdown**, **Prism Syntax Highlighter** | Syntax-highlighted code blocks, tables, citations |
-| **Backend Framework** | **FastAPI**, **Uvicorn**, **Pydantic v2** | Async REST API & Server-Sent Events streaming |
-| **AI Models** | **Google Gemini 2.5 Flash**, **Embedding-001** | LLM synthesis, multi-format vision OCR & embeddings |
-| **Vector Storage** | **Pinecone Serverless (AWS us-east-1)** | 1024-dim cosine vector index with user namespaces |
-| **Relational Database**| **PostgreSQL (`psycopg2-binary`)** | Users, conversations, document metadata, shared snapshots |
-| **Web Search** | **DuckDuckGo Search (`ddgs`)** | Real-time web retrieval for grounding claims |
-| **Document Parsers** | **PyPDF, python-docx, openpyxl, Pillow** | Native extraction across PDF, Office, and images |
-| **Deployment** | **Vercel** (Frontend), **Render / Railway** (Backend) | Global edge hosting with SPA rewrites |
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend Framework** | **React 18 + Vite** | Fast Single Page Application with optimized bundle splitting |
+| **Styling & Theme** | **Tailwind CSS + Vanilla CSS** | Curated dark-mode theme, glassmorphism, responsive drawers |
+| **Icons & Typography** | **Lucide React + Outfit/Inter** | Modern UI iconography and clean typography |
+| **Streaming Client** | **Server-Sent Events (`EventSource`)** | Low-latency token streaming with dedicated event handlers |
+| **Backend Framework** | **FastAPI (Python 3.11+)** | High-performance asynchronous REST & streaming API |
+| **Language Model** | **Google Gemini 2.5 Flash** | Advanced reasoning, multimodal OCR, and query planning |
+| **Vector Database** | **Pinecone Serverless** | 768-dim similarity search with user namespace partitioning |
+| **Embeddings** | **Google text-embedding-004** | High-precision semantic vector representations |
+| **Primary Database** | **Supabase (PostgreSQL 15)** | Relational storage with enabled Row-Level Security (RLS) |
+| **Document Parsers** | **PyPDF, python-docx, openpyxl** | Parsing PDF annotations, Word XML rels, and Excel cells |
+| **Web Search** | **DuckDuckGo API (`ddgs`) + httpx** | 100% free search engine with HTML fallback |
+| **Live Web Fetcher** | **httpx (Async HTTP Client)** | Autonomous live webpage and GitHub repository scraper |
+| **Favicon Engine** | **Google S2 Favicon CDN** | Dynamic 64px website favicons for any domain |
+| **Security & Auth** | **JWT (python-jose) + Passlib** | Stateless token auth with PBKDF2 password hashing |
 
 ---
 
@@ -168,243 +187,193 @@ flowchart TD
 
 ```text
 DocMind/
-├── vercel.json                         # Root Vercel SPA rewrite configuration
 ├── backend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── models.py               # Pydantic v2 validation models
-│   │   │   ├── routes_auth.py          # Signup, Login, Me endpoints
-│   │   │   ├── routes_chat.py          # Chat CRUD, SSE streaming, regeneration
-│   │   │   ├── routes_documents.py     # Upload with chat-scoping, delete, list
-│   │   │   └── routes_share.py         # Snapshot link creation, revocation
+│   │   │   ├── models.py            # Pydantic schemas (Citation, Message, Conversation)
+│   │   │   ├── routes_auth.py       # User registration, login, JWT issuance
+│   │   │   ├── routes_chat.py       # Chat endpoints & SSE streaming (/stream)
+│   │   │   ├── routes_documents.py  # Document upload, chunking, and deletion
+│   │   │   └── routes_share.py      # Public snapshot viewer and revocation
 │   │   ├── core/
-│   │   │   ├── auth.py                 # JWT token creation & PBKDF2 hashing
-│   │   │   ├── config.py               # Settings & API key rotation manager
-│   │   │   └── database.py             # PostgreSQL connection & auto-schema bootstrap
+│   │   │   ├── auth.py              # JWT verification and user dependency
+│   │   │   ├── config.py            # Pydantic settings & APIKeyRotator (20 keys)
+│   │   │   └── database.py          # PostgreSQL connection & RLS migration
 │   │   ├── services/
-│   │   │   ├── document_service.py     # Multi-format parser & Gemini Vision OCR
-│   │   │   ├── llm_service.py          # Gemini 2.5 Flash caller & SSE generator
-│   │   │   ├── rag_service.py          # Chat-scoped Hybrid RAG & RRF reranking
-│   │   │   ├── vector_service.py       # Pinecone client & Matryoshka adapter
-│   │   │   └── web_search_service.py   # DuckDuckGo live search engine
-│   │   └── main.py                     # FastAPI application entry & CORS
-│   ├── tests/
-│   │   ├── test_rag_chatbot.py         # Multi-tenant isolation & auth tests
-│   │   └── test_full_rag_pipeline.py   # Full RAG, parsing, web search, sharing tests
-│   ├── requirements.txt                # Python dependencies
-│   └── .env                            # Backend configuration variables
-└── frontend/
-    ├── vercel.json                     # Frontend Vercel SPA routing
-    ├── package.json                    # Node dependencies
-    ├── vite.config.js                  # Vite 7 build configuration
-    └── src/
-        ├── App.jsx                     # Root application coordinator & route listener
-        ├── api.js                      # Axios/Fetch client wrapper
-        ├── auth.js                     # Local session storage helpers
-        ├── index.css                   # Tailwind v4 theme & custom utilities
-        ├── components/
-        │   ├── LoginView.jsx           # Modern authentication screen
-        │   ├── SharedChatView.jsx      # Public read-only chat snapshot viewer
-        │   ├── ShareModal.jsx          # Link generation & revocation modal
-        │   ├── Sidebar.jsx             # Chat history with doc count badges & library
-        │   └── UploadModal.jsx         # Drag-and-drop file uploader with chat targeting
-        └── features/
-            └── Chat/
-                └── ChatView.jsx        # Streaming view with active doc chips & citations
+│   │   │   ├── document_service.py  # Universal link parser (PDF, DOCX, PPTX, XLSX)
+│   │   │   ├── llm_service.py       # Gemini 2.5 Flash, verification queries, followups
+│   │   │   ├── rag_service.py       # Hybrid retrieval (Vector + BM25 + RRF)
+│   │   │   ├── vector_service.py    # Pinecone vector index manager
+│   │   │   └── web_search_service.py# DuckDuckGo search & Deep Web URL fetcher
+│   │   └── main.py                  # FastAPI application entrypoint & CORS
+│   ├── requirements.txt             # Python dependencies
+│   └── run.py                       # Local uvicorn development launcher
+├── frontend/
+│   ├── src/
+│   │   ├── components/              # Sidebar, LoginView, SharedChatView
+│   │   ├── features/Chat/
+│   │   │   ├── ChatView.jsx         # Main chat screen with action bar & SSE receiver
+│   │   │   ├── ResearchStatusBar.jsx# Collapsible research bar with stacked favicons
+│   │   │   ├── SourceCardsCarousel.jsx # Perplexity-style horizontal source cards
+│   │   │   ├── MarkdownTableRenderer.jsx # Custom GFM table & code block renderer
+│   │   │   ├── FollowupQuestions.jsx# Interactive follow-up question pills
+│   │   │   └── AllSourcesModal.jsx  # Full source details drawer
+│   │   ├── services/                # API client & SSE stream connection
+│   │   ├── App.jsx                  # Root state & authenticated view routing
+│   │   └── main.jsx                 # React root mounting
+│   ├── package.json                 # Frontend dependencies
+│   └── vite.config.js               # Vite build configuration
+├── vercel.json                      # Vercel SPA routing rewrites
+└── README.md                        # Documentation
 ```
 
 ---
 
-## 📡 REST & Streaming API Reference
-
-### 🔐 Authentication (`/api/auth`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/auth/signup` | Register a new user account |
-| `POST` | `/api/auth/login` | Authenticate credentials and receive JWT |
-| `GET` | `/api/auth/me` | Fetch authenticated user profile |
-
-### 💬 Conversations & Chat (`/api/conversations`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/conversations` | List user conversations with last message preview |
-| `POST` | `/api/conversations` | Create a conversation with optional `selected_doc_ids` |
-| `GET` | `/api/conversations/{id}` | Get full conversation details and message history |
-| `PATCH` | `/api/conversations/{id}` | Rename title, update web search toggle, or update attached docs |
-| `DELETE` | `/api/conversations/{id}` | Delete a conversation and its messages |
-| `POST` | `/api/conversations/{id}/messages` | Send message (synchronous RAG response) |
-| `GET` | `/api/conversations/{id}/messages/stream` | **SSE token stream** with live title & citations |
-| `POST` | `/api/conversations/{id}/regenerate` | Regenerate the latest assistant response |
-
-### 📚 Documents & Knowledge Base (`/api/documents`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/documents` | List all documents in the user's library |
-| `POST` | `/api/documents/upload` | Upload multi-format files; optionally pass `conversation_id` |
-| `DELETE` | `/api/documents/{id}` | Delete document and wipe vectors from Pinecone |
-
-### 🔗 Public Chat Sharing (`/api/share`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/share/{conversation_id}` | Generate a public point-in-time snapshot link |
-| `GET` | `/api/share/{share_token}` | Public read-only access to a shared conversation |
-| `DELETE` | `/api/share/{share_token}` | Revoke public access (returns `404` immediately) |
-
----
-
-## 🚀 Getting Started
+## 🚀 Quickstart & Installation
 
 ### Prerequisites
-- **Node.js:** v18.0.0 or higher
-- **Python:** v3.11 or higher
-- **PostgreSQL Database:** Supabase, Neon, AWS RDS, or local PostgreSQL
-- **Pinecone Account:** An index named `chatbot` (1024 dimension, cosine metric)
-- **Google Gemini API Key:** From [Google AI Studio](https://aistudio.google.com/)
+- **Python 3.11+** installed
+- **Node.js 18+** & npm installed
+- A free **Supabase** account (PostgreSQL)
+- A free **Pinecone** account (Serverless index, dimension `768`, metric `cosine`)
+- One or more free **Google Gemini API keys** from Google AI Studio
 
 ---
 
-### 1. Backend Setup
+### 1. Environment Configuration
 
-1. **Navigate to the backend directory:**
-   ```bash
-   cd backend
-   ```
+Create a `.env` file in the `backend/` directory:
 
-2. **Create and activate a virtual environment:**
-   ```bash
-   # Windows:
-   python -m venv venv
-   .\venv\Scripts\activate
+```env
+# Project Info
+PROJECT_NAME="DocMind AI"
+VERSION="4.0.0"
+CORS_ORIGINS="http://localhost:5173,http://localhost:3000,https://your-frontend.vercel.app"
 
-   # Linux/macOS:
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+# Database (Supabase PostgreSQL URL)
+DATABASE_URL="postgresql://postgres:your_password@db.your_project.supabase.co:5432/postgres"
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Pinecone Vector Database
+PINECONE_API_KEY="your-pinecone-api-key"
+PINECONE_INDEX_NAME="chatbot"
 
-4. **Configure environment variables:**
-   Create a `.env` file in the `backend/` directory:
-   ```env
-   # Google Gemini API Keys (Supports key rotation: KEY1 to KEY10)
-   GOOGLE_API_KEY1="AIzaSyYourGeminiApiKeyHere"
+# Google Gemini API Keys (Supports up to 20 keys for automated rotation)
+GOOGLE_API_KEY1="AIzaSyYourFirstKey"
+GOOGLE_API_KEY2="AIzaSyYourSecondKey"
+GOOGLE_API_KEY3="AIzaSyYourThirdKey"
+GOOGLE_API_KEY="AIzaSyYourDefaultKey"
 
-   # PostgreSQL Connection String (Supabase / Neon / Local)
-   DATABASE_URL="postgresql://postgres:password@localhost:5432/docmind"
+# Security & Limits
+JWT_SECRET="generate-a-strong-secret-key-32-chars-min"
+JWT_ALGORITHM="HS256"
+JWT_EXPIRE_MINUTES="10080"
+MAX_UPLOAD_SIZE_MB="50"
+```
 
-   # Pinecone Serverless Vector DB
-   PINECONE_API_KEY="pcsk_your_pinecone_api_key_here"
-   PINECONE_INDEX_NAME="chatbot"
+In the `frontend/` directory, create `.env`:
 
-   # Security & CORS
-   JWT_SECRET="generate-a-secure-random-secret-key-32-chars-minimum"
-   CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,https://your-app.vercel.app"
-   ```
-
-5. **Start the backend server:**
-   ```bash
-   uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-   ```
-   - API Root: `http://127.0.0.1:8000/`
-   - Interactive Swagger Docs: `http://127.0.0.1:8000/docs`
+```env
+VITE_API_URL="http://localhost:8000"
+```
 
 ---
 
-### 2. Frontend Setup
+### 2. Backend Setup
 
-1. **Navigate to the frontend directory:**
-   ```bash
-   cd frontend
-   ```
+```bash
+# Navigate to backend directory
+cd backend
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+# Create virtual environment
+python -m venv venv
 
-3. **Configure environment variables:**
-   Create a `.env` file in `frontend/`:
-   ```env
-   VITE_API_URL=http://localhost:8000
-   ```
-   *(For production deployment on Vercel, set this to your deployed backend URL, e.g. `https://docmind-api.onrender.com`).*
+# Activate virtual environment
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# macOS / Linux:
+source venv/bin/activate
 
-4. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-   Open your browser at `http://localhost:5173/`.
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the backend server
+python run.py
+```
+The FastAPI backend will start on **`http://localhost:8000`** with interactive docs at `http://localhost:8000/docs`.
 
 ---
 
-## 🚢 Deployment Guide
+### 3. Frontend Setup
 
-### Frontend (Vercel Deployment)
+```bash
+# Open a new terminal and navigate to frontend directory
+cd frontend
 
+# Install npm dependencies
+npm install
+
+# Start Vite development server
+npm run dev
+```
+Open **`http://localhost:5173`** in your browser.
+
+---
+
+## 🌐 Deployment Guide
+
+### Frontend Deployment (Vercel)
 1. Push your code to GitHub.
-2. In Vercel, click **Import Project** and select your repository.
+2. In the Vercel dashboard, click **Add New Project** and select your `DocMind` repository.
 3. Configure the build settings:
-   - **Root Directory:** `frontend` (or keep root if running build from root)
+   - **Framework Preset:** Vite
+   - **Root Directory:** `frontend`
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
 4. Add the Environment Variable in Vercel:
-   - `VITE_API_URL`: Your live backend API URL.
-5. **SPA Rewrites:** DocMind includes [`frontend/vercel.json`](file:///d:/DocMind/frontend/vercel.json) to ensure public share links (`/share/:token`) resolve correctly on direct loads and page refreshes:
-   ```json
-   {
-     "rewrites": [
-       {
-         "source": "/(.*)",
-         "destination": "/index.html"
-       }
-     ]
-   }
-   ```
+   - `VITE_API_URL`: Your deployed backend URL (e.g. `https://docmind-backend.onrender.com`).
+5. Click **Deploy**. The included [`vercel.json`](file:///d:/DocMind/vercel.json) ensures SPA routing works seamlessly for all routes and share links (`/share/:token`).
 
-### Backend Deployment (Render / Railway / Fly.io)
+### Backend Deployment (Render / Railway / VPS)
+1. In your cloud provider (e.g. [Render.com](https://render.com)), create a new **Web Service** connected to your repository.
+2. Set the build parameters:
+   - **Root Directory:** `backend`
+   - **Runtime:** Python 3
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+3. Add your environment variables from `backend/.env` into the hosting dashboard.
+4. Update `CORS_ORIGINS` with your production Vercel URL.
 
-1. Deploy the `backend/` directory using Python 3.11+.
-2. Set the start command:
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port $PORT
-   ```
-3. Populate all environment variables from `backend/.env` into your host's dashboard.
-4. Ensure your PostgreSQL instance accepts connections from your backend host.
+### Database Setup (Supabase)
+DocMind automatically creates all required tables and enables **Row-Level Security (RLS)** upon first startup via `backend/app/core/database.py`.
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## 📡 API & Streaming Reference
 
-DocMind features an end-to-end integration test suite covering:
-- Multi-format document parsing & chunking (Text, Markdown, Office, PDF).
-- Real-time DuckDuckGo web search retrieval.
-- Complete RAG synthesis, token streaming, and citation generation.
-- Chat sharing, snapshot generation, and immediate revocation.
-- Strict cross-user multi-tenant data isolation.
+### Real-Time Chat Streaming
+`GET /api/conversations/{conversation_id}/messages/stream`
 
-To run the automated test suite:
-```bash
-cd backend
-python -m pytest tests -v
+Streams Server-Sent Events (SSE) directly to the client:
+```http
+GET /api/conversations/123/messages/stream?text=rate+his+resume&token=<JWT_TOKEN>&web_search=true HTTP/1.1
 ```
 
-Expected output:
-```text
-tests/test_full_rag_pipeline.py::test_document_parser_multi_format PASSED
-tests/test_full_rag_pipeline.py::test_web_search_service PASSED
-tests/test_full_rag_pipeline.py::test_end_to_end_rag_and_sharing_workflow PASSED
-tests/test_rag_chatbot.py::test_health_check PASSED
-tests/test_rag_chatbot.py::test_auth_workflow PASSED
-tests/test_rag_chatbot.py::test_document_and_conversation_isolation PASSED
-
-================== 6 passed in 139.67s ==================
-```
+**SSE Event Types:**
+- `event: title` $\to$ Returns auto-generated conversation title.
+- `event: research` $\to$ Returns distilled research topic and sources count for the status bar.
+- `event: citations` $\to$ Returns structured array of document and web source cards.
+- `event: chunk` $\to$ Streams individual Markdown tokens.
+- `event: related` $\to$ Returns array of 3–4 clickable follow-up questions.
+- `event: error` $\to$ Broadcasts error details if generation encounters issues.
 
 ---
 
-## 📄 License
+## 📄 License & Author
 
-This project is licensed under the [MIT License](LICENSE).
+Developed by **[Siddhant Saxena](https://github.com/siddhantsaxena45)**  
+Computer Science Undergraduate • AI & Full-Stack Developer  
+- **GitHub:** [@siddhantsaxena45](https://github.com/siddhantsaxena45)  
+- **LinkedIn:** [Siddhant Saxena](https://linkedin.com/in/siddhant-saxena)  
+- **Project:** [DocMind AI](https://github.com/siddhantsaxena45/DocMind)
+
+Licensed under the **MIT License**. Free for educational and open-source use.
