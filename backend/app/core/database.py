@@ -118,6 +118,17 @@ def ensure_schema():
     # Clean up obsolete document_feature_cache if present
     cur.execute("DROP TABLE IF EXISTS document_feature_cache;")
 
+    # Enforce Row Level Security (RLS) on all public tables to eliminate Supabase public Data API exposure
+    cur.execute(
+        """
+        ALTER TABLE IF EXISTS users ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS documents ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS conversations ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS messages ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS shared_conversations ENABLE ROW LEVEL SECURITY;
+        """
+    )
+
     conn.commit()
     cur.close()
     conn.close()
