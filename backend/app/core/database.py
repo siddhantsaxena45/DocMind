@@ -18,7 +18,7 @@ def get_db():
 
 def ensure_schema():
     """
-    Creates and migrates the production database schema for DocMind Advanced RAG Chatbot.
+    Creates and migrates the production database schema for DocMind.
     Safe to execute multiple times.
     """
     conn = get_db_conn()
@@ -96,6 +96,8 @@ def ensure_schema():
         CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at ASC);
         """
     )
+    cur.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS related_questions jsonb DEFAULT '[]'::jsonb;")
+    cur.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS research_query text;")
 
     # 5. Shared Conversations
     cur.execute(

@@ -32,7 +32,7 @@ def create_share_link(
     # 2. Get current messages snapshot
     cur.execute(
         """
-        SELECT id, role, content, sources, created_at
+        SELECT id, role, content, sources, related_questions, research_query, created_at
         FROM messages
         WHERE conversation_id = %s
         ORDER BY created_at ASC
@@ -44,12 +44,15 @@ def create_share_link(
     messages_snapshot = []
     for r in rows:
         srcs = r[3] if isinstance(r[3], list) else (json.loads(r[3]) if r[3] else [])
+        rel_q = r[4] if isinstance(r[4], list) else (json.loads(r[4]) if r[4] else [])
         messages_snapshot.append({
             "id": str(r[0]),
             "role": r[1],
             "content": r[2],
             "sources": srcs,
-            "created_at": r[4].isoformat() if r[4] else ""
+            "related_questions": rel_q,
+            "research_query": r[5],
+            "created_at": r[6].isoformat() if r[6] else ""
         })
 
     # 3. Check if active share already exists
@@ -134,6 +137,8 @@ def get_shared_conversation(share_token: str):
             role=m.get("role", "assistant"),
             content=m.get("content", ""),
             sources=srcs,
+            related_questions=m.get("related_questions", []),
+            research_query=m.get("research_query"),
             created_at=m.get("created_at", "")
         ))
 

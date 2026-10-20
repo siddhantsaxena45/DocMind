@@ -3,14 +3,16 @@ import {
   Send, Bot, User, Loader2, Sparkles, Quote, Globe, Share2,
   Copy, Check, RotateCcw, Menu, ExternalLink, ChevronDown,
   Paperclip, ArrowUp, AlertCircle, FileText, Database, Plus, X,
-  Search, Shield, CheckCircle2, Trash2
+  Search, Shield, CheckCircle2, Trash2, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { api } from "../../api";
 import { loadAuth } from "../../auth";
+import MarkdownTableRenderer from "./MarkdownTableRenderer";
+import ResearchStatusBar from "./ResearchStatusBar";
+import SourceCardsCarousel from "./SourceCardsCarousel";
+import FollowupQuestions from "./FollowupQuestions";
+import AllSourcesModal from "./AllSourcesModal";
 
 const PROMPT_SUGGESTIONS = [
   "Summarize the key findings, methodologies, and conclusions",
@@ -53,10 +55,11 @@ export default function ChatView({
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState(null);
-  const [copiedCodeKey, setCopiedCodeKey] = useState(null);
   const [error, setError] = useState(null);
   const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
   const [docSearchQuery, setDocSearchQuery] = useState("");
+  const [activeSourcesModal, setActiveSourcesModal] = useState(null);
+  const [feedbackMap, setFeedbackMap] = useState({});
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -215,6 +218,20 @@ export default function ChatView({
 
               if (currentEvent === "title" && parsed.title) {
                 onUpdateConversation(conversation.id, { title: parsed.title });
+              } else if (currentEvent === "research") {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      research_query: parsed.query,
+                      research_status: parsed.status,
+                      sources_count: parsed.sources_count
+                    };
+                  }
+                  return updated;
+                });
               } else if (currentEvent === "citations") {
                 setMessages((prev) => {
                   const updated = [...prev];
@@ -236,12 +253,29 @@ export default function ChatView({
                   }
                   return updated;
                 });
+              } else if (currentEvent === "related") {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      related_questions: Array.isArray(parsed) ? parsed : []
+                    };
+                  }
+                  return updated;
+                });
               } else if (currentEvent === "done" && parsed.message_id) {
                 setMessages((prev) => {
                   const updated = [...prev];
                   const lastIdx = updated.length - 1;
                   if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
-                    updated[lastIdx] = { ...updated[lastIdx], id: parsed.message_id };
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      id: parsed.message_id,
+                      related_questions: parsed.related_questions || updated[lastIdx].related_questions || [],
+                      research_query: parsed.research_query || updated[lastIdx].research_query
+                    };
                   }
                   return updated;
                 });
@@ -274,6 +308,8 @@ export default function ChatView({
                 role: "assistant",
                 content: fallbackRes.answer,
                 sources: fallbackRes.sources,
+                related_questions: fallbackRes.related_questions || [],
+                research_query: fallbackRes.research_query,
                 created_at: new Date().toISOString()
               };
             }
@@ -310,6 +346,8 @@ export default function ChatView({
             role: "assistant",
             content: res.answer,
             sources: res.sources,
+            related_questions: res.related_questions || [],
+            research_query: res.research_query,
             created_at: new Date().toISOString()
           }
         ];
@@ -327,10 +365,11 @@ export default function ChatView({
     setTimeout(() => setCopiedMsgIdx(null), 2000);
   };
 
-  const handleCopyCode = (code, key) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCodeKey(key);
-    setTimeout(() => setCopiedCodeKey(null), 2000);
+  const handleFeedback = (msgId, type) => {
+    setFeedbackMap((prev) => ({
+      ...prev,
+      [msgId]: prev[msgId] === type ? null : type
+    }));
   };
 
   const toggleWebSearch = async () => {
@@ -551,128 +590,108 @@ export default function ChatView({
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   ) : (
                     <div className="space-y-3">
-                      {/* Markdown rendering */}
-                      <div className="prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown
-                          components={{
-                            code({ node, inline, className, children, ...props }) {
-                              const match = /language-(\w+)/.exec(className || "");
-                              const codeString = String(children).replace(/\n$/, "");
-                              const codeKey = `code_${idx}_${match ? match[1] : "txt"}`;
-
-                              return !inline && match ? (
-                                <div className="rounded-xl overflow-hidden my-3 border border-white/10">
-                                  <div className="bg-slate-950 px-3 py-1.5 text-[11px] font-mono text-slate-400 border-b border-white/10 flex justify-between items-center">
-                                    <span>{match[1]}</span>
-                                    <button
-                                      onClick={() => handleCopyCode(codeString, codeKey)}
-                                      className="flex items-center gap-1 hover:text-white transition-colors"
-                                    >
-                                      {copiedCodeKey === codeKey ? (
-                                        <>
-                                          <Check className="w-3 h-3 text-emerald-400" />
-                                          <span className="text-[10px]">Copied!</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Copy className="w-3 h-3" />
-                                          <span className="text-[10px]">Copy</span>
-                                        </>
-                                      )}
-                                    </button>
-                                  </div>
-                                  <SyntaxHighlighter
-                                    style={atomDark}
-                                    language={match[1]}
-                                    PreTag="div"
-                                    className="!m-0 !bg-slate-950/90 text-xs"
-                                    {...props}
-                                  >
-                                    {codeString}
-                                  </SyntaxHighlighter>
-                                </div>
-                              ) : (
-                                <code className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
-                                  {children}
-                                </code>
-                              );
-                            },
-                            table({ children }) {
-                              return (
-                                <div className="overflow-x-auto my-3 rounded-xl border border-white/10">
-                                  <table className="w-full text-left text-xs border-collapse">{children}</table>
-                                </div>
-                              );
-                            },
-                            th({ children }) {
-                              return <th className="bg-white/5 px-3 py-2 border-b border-white/10 font-bold">{children}</th>;
-                            },
-                            td({ children }) {
-                              return <td className="px-3 py-2 border-b border-white/5">{children}</td>;
-                            },
-                          }}
-                        >
-                          {msg.content || (streaming && isLastMessage ? "Thinking..." : "")}
-                        </ReactMarkdown>
-                      </div>
-
-                      {/* Sources / Citations */}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-white/5">
-                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            <Quote className="w-3 h-3 text-brand-secondary" /> Sources & Citations
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {msg.sources.map((s, sIdx) => (
-                              <span
-                                key={sIdx}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[11px] text-brand-secondary font-medium transition-colors"
-                              >
-                                {s.type === "web" ? <Globe className="w-3 h-3 shrink-0" /> : <Quote className="w-3 h-3 shrink-0" />}
-                                {s.url ? (
-                                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
-                                    {s.title} <ExternalLink className="w-2.5 h-2.5" />
-                                  </a>
-                                ) : (
-                                  <span>{s.title}</span>
-                                )}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+                      {/* 1. Research Status Header (Perplexity Collapsible Accordion with Stacked Favicons) */}
+                      {(msg.research_query || (msg.sources && msg.sources.length > 0)) && (
+                        <ResearchStatusBar
+                          researchQuery={msg.research_query}
+                          sources={msg.sources || []}
+                          onOpenAllSources={() =>
+                            setActiveSourcesModal({
+                              sources: msg.sources || [],
+                              researchQuery: msg.research_query
+                            })
+                          }
+                        />
                       )}
 
-                      {/* Action buttons (Copy, Regenerate) */}
-                      {!streaming && msg.content && (
-                        <div className="mt-3 flex items-center gap-3 pt-2 text-xs text-slate-400">
-                          <button
-                            onClick={() => handleCopyMessage(msg.content, idx)}
-                            className="flex items-center gap-1 hover:text-white transition-colors"
-                            title="Copy response"
-                          >
-                            {copiedMsgIdx === idx ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-[11px]">Copied</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                <span className="text-[11px]">Copy</span>
-                              </>
-                            )}
-                          </button>
+                      {/* 2. Main Markdown & Table Content */}
+                      <MarkdownTableRenderer
+                        content={msg.content || (streaming && isLastMessage ? "Thinking..." : "")}
+                        messageIdx={idx}
+                      />
 
-                          {isLastMessage && (
+                      {/* 3. Source Cards Carousel (Perplexity Style Cards Grid) */}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <SourceCardsCarousel
+                          sources={msg.sources}
+                          researchQuery={msg.research_query}
+                          onOpenAllSources={() =>
+                            setActiveSourcesModal({
+                              sources: msg.sources,
+                              researchQuery: msg.research_query
+                            })
+                          }
+                        />
+                      )}
+
+                      {/* 4. Follow-up / Related Questions (↳ Pills) */}
+                      {msg.related_questions && msg.related_questions.length > 0 && !streaming && (
+                        <FollowupQuestions
+                          questions={msg.related_questions}
+                          onSelectQuestion={(q) => handleSend(q)}
+                          disabled={streaming}
+                        />
+                      )}
+
+                      {/* 5. Modern Action Toolbar (Copy, Try again, Thumbs Up/Down) */}
+                      {!streaming && msg.content && (
+                        <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+                          <div className="flex items-center gap-3">
                             <button
-                              onClick={handleRegenerate}
-                              className="flex items-center gap-1 hover:text-white transition-colors"
-                              title="Regenerate answer"
+                              onClick={() => handleCopyMessage(msg.content, idx)}
+                              className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
+                              title="Copy response"
                             >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">Regenerate</span>
+                              {copiedMsgIdx === idx ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="text-[11px] text-emerald-400 font-medium">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span className="text-[11px]">Copy</span>
+                                </>
+                              )}
                             </button>
-                          )}
+
+                            {isLastMessage && (
+                              <button
+                                onClick={handleRegenerate}
+                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
+                                title="Regenerate answer"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span className="text-[11px]">Try again</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Feedback: Thumbs Up / Down */}
+                          <div className="flex items-center gap-1 text-slate-500">
+                            <button
+                              onClick={() => handleFeedback(msg.id || idx, "liked")}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                feedbackMap[msg.id || idx] === "liked"
+                                  ? "text-emerald-400 bg-emerald-500/10"
+                                  : "hover:text-slate-200 hover:bg-white/5"
+                              }`}
+                              title="Helpful"
+                            >
+                              <ThumbsUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleFeedback(msg.id || idx, "disliked")}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                feedbackMap[msg.id || idx] === "disliked"
+                                  ? "text-rose-400 bg-rose-500/10"
+                                  : "hover:text-slate-200 hover:bg-white/5"
+                              }`}
+                              title="Not helpful"
+                            >
+                              <ThumbsDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -968,6 +987,14 @@ export default function ChatView({
           </div>
         )}
       </AnimatePresence>
+
+      {/* All Sources Drawer / Modal */}
+      <AllSourcesModal
+        isOpen={!!activeSourcesModal}
+        onClose={() => setActiveSourcesModal(null)}
+        sources={activeSourcesModal?.sources || []}
+        researchQuery={activeSourcesModal?.researchQuery || ""}
+      />
     </div>
   );
 }

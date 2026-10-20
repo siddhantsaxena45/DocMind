@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Bot, User, Share2, Quote, Globe, ExternalLink, Copy, Check, ArrowLeft, Loader2, Sparkles } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Bot, User, Share2, Copy, Check, ArrowLeft, Loader2, Sparkles, ThumbsUp, ThumbsDown } from "lucide-react";
 import { api } from "../api";
+import MarkdownTableRenderer from "../features/Chat/MarkdownTableRenderer";
+import ResearchStatusBar from "../features/Chat/ResearchStatusBar";
+import SourceCardsCarousel from "../features/Chat/SourceCardsCarousel";
+import FollowupQuestions from "../features/Chat/FollowupQuestions";
+import AllSourcesModal from "../features/Chat/AllSourcesModal";
 
 export default function SharedChatView({ shareToken, onBackToApp }) {
   const [loading, setLoading] = useState(true);
   const [sharedData, setSharedData] = useState(null);
   const [error, setError] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [activeSourcesModal, setActiveSourcesModal] = useState(null);
+  const [feedbackMap, setFeedbackMap] = useState({});
 
   useEffect(() => {
     async function fetchSharedChat() {
@@ -31,6 +35,13 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
     navigator.clipboard.writeText(text);
     setCopiedIndex(idx);
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleFeedback = (msgId, type) => {
+    setFeedbackMap((prev) => ({
+      ...prev,
+      [msgId]: prev[msgId] === type ? null : type
+    }));
   };
 
   if (loading) {
@@ -108,91 +119,97 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
             )}
 
             <div
-              className={`max-w-[85%] md:max-w-[80%] rounded-2xl p-4 md:p-6 border text-sm leading-relaxed ${
+              className={`max-w-[85%] md:max-w-[82%] rounded-2xl p-4 md:p-6 border text-sm leading-relaxed ${
                 msg.role === "user"
                   ? "bg-brand-primary/90 text-white border-brand-primary/30"
                   : "bg-slate-800/70 border-white/5 text-slate-200"
               }`}
             >
               {msg.role === "assistant" ? (
-                <div className="prose prose-invert prose-sm max-w-none space-y-3">
-                  <ReactMarkdown
-                    components={{
-                      code({ node, inline, className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || "");
-                        return !inline && match ? (
-                          <div className="rounded-xl overflow-hidden my-3 border border-white/10">
-                            <div className="bg-slate-950 px-3 py-1.5 text-[11px] font-mono text-slate-400 border-b border-white/10 flex justify-between items-center">
-                              <span>{match[1]}</span>
-                            </div>
-                            <SyntaxHighlighter
-                              style={atomDark}
-                              language={match[1]}
-                              PreTag="div"
-                              className="!m-0 !bg-slate-950/90 text-xs"
-                              {...props}
-                            >
-                              {String(children).replace(/\n$/, "")}
-                            </SyntaxHighlighter>
-                          </div>
-                        ) : (
-                          <code className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
-                            {children}
-                          </code>
-                        );
-                      },
-                      table({ children }) {
-                        return (
-                          <div className="overflow-x-auto my-3 rounded-xl border border-white/10">
-                            <table className="w-full text-left text-xs border-collapse">{children}</table>
-                          </div>
-                        );
-                      },
-                      th({ children }) {
-                        return <th className="bg-white/5 px-3 py-2 border-b border-white/10 font-bold">{children}</th>;
-                      },
-                      td({ children }) {
-                        return <td className="px-3 py-2 border-b border-white/5">{children}</td>;
-                      },
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
-
-                  {/* Sources / Citations */}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-white/5">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        <Quote className="w-3 h-3" /> Sources Cited
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {msg.sources.map((s, sIdx) => (
-                          <span
-                            key={sIdx}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[11px] text-brand-secondary font-medium transition-colors"
-                          >
-                            {s.type === "web" ? <Globe className="w-3 h-3 shrink-0" /> : <Quote className="w-3 h-3 shrink-0" />}
-                            {s.url ? (
-                              <a href={s.url} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
-                                {s.title} <ExternalLink className="w-2.5 h-2.5" />
-                              </a>
-                            ) : (
-                              <span>{s.title}</span>
-                            )}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                <div className="space-y-3">
+                  {/* Research Status Header */}
+                  {(msg.research_query || (msg.sources && msg.sources.length > 0)) && (
+                    <ResearchStatusBar
+                      researchQuery={msg.research_query}
+                      sources={msg.sources || []}
+                      onOpenAllSources={() =>
+                        setActiveSourcesModal({
+                          sources: msg.sources || [],
+                          researchQuery: msg.research_query
+                        })
+                      }
+                    />
                   )}
 
-                  <div className="mt-2 flex justify-end">
+                  {/* Main Markdown & Table Content */}
+                  <MarkdownTableRenderer content={msg.content} messageIdx={idx} />
+
+                  {/* Source Cards Carousel */}
+                  {msg.sources && msg.sources.length > 0 && (
+                    <SourceCardsCarousel
+                      sources={msg.sources}
+                      researchQuery={msg.research_query}
+                      onOpenAllSources={() =>
+                        setActiveSourcesModal({
+                          sources: msg.sources,
+                          researchQuery: msg.research_query
+                        })
+                      }
+                    />
+                  )}
+
+                  {/* Follow-up Questions */}
+                  {msg.related_questions && msg.related_questions.length > 0 && (
+                    <FollowupQuestions
+                      questions={msg.related_questions}
+                      onSelectQuestion={() => onBackToApp()}
+                    />
+                  )}
+
+                  {/* Action Toolbar */}
+                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
                     <button
                       onClick={() => copyMessage(msg.content, idx)}
-                      className="text-xs text-slate-400 hover:text-white p-1 rounded transition-colors"
+                      className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
                       title="Copy response"
                     >
-                      {copiedIndex === idx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedIndex === idx ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-[11px] text-emerald-400 font-medium">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span className="text-[11px]">Copy</span>
+                        </>
+                      )}
                     </button>
+
+                    <div className="flex items-center gap-1 text-slate-500">
+                      <button
+                        onClick={() => handleFeedback(msg.id || idx, "liked")}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          feedbackMap[msg.id || idx] === "liked"
+                            ? "text-emerald-400 bg-emerald-500/10"
+                            : "hover:text-slate-200 hover:bg-white/5"
+                        }`}
+                        title="Helpful"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleFeedback(msg.id || idx, "disliked")}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          feedbackMap[msg.id || idx] === "disliked"
+                            ? "text-rose-400 bg-rose-500/10"
+                            : "hover:text-slate-200 hover:bg-white/5"
+                        }`}
+                        title="Not helpful"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -208,6 +225,14 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
           </div>
         ))}
       </div>
+
+      {/* All Sources Drawer / Modal */}
+      <AllSourcesModal
+        isOpen={!!activeSourcesModal}
+        onClose={() => setActiveSourcesModal(null)}
+        sources={activeSourcesModal?.sources || []}
+        researchQuery={activeSourcesModal?.researchQuery || ""}
+      />
     </div>
   );
 }

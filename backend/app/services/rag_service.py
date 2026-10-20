@@ -193,15 +193,16 @@ class RAGService:
                     citations.append(
                         Citation(
                             title=f"{fname} (Page {page})",
+                            site_name=fname,
                             page=page,
-                            snippet=text[:250],
+                            snippet=text[:300],
                             type="doc"
                         )
                     )
 
         # 2. Web search retrieval
         if enable_web_search:
-            web_results = web_search_service.search(query=query, max_results=4)
+            web_results = web_search_service.search(query=query, max_results=6)
             if web_results:
                 context_parts.append("\n### REAL-TIME WEB SEARCH EVIDENCE:")
                 for idx, item in enumerate(web_results, start=1):
@@ -215,7 +216,9 @@ class RAGService:
                         Citation(
                             title=w_title,
                             url=w_url,
-                            snippet=w_snippet[:250],
+                            snippet=w_snippet[:300],
+                            site_name=item.get("site_name") or "Web",
+                            favicon=item.get("favicon"),
                             type="web"
                         )
                     )

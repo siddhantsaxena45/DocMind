@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Production-Ready GPT-like Advanced RAG Chatbot API",
+    description="Production-Ready RAG and web search",
     lifespan=lifespan
 )
 

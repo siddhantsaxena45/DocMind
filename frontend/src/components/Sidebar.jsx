@@ -115,7 +115,7 @@ export default function Sidebar({
               <div className="w-8 h-8 rounded-xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-md">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white tracking-tight text-base">DocMind RAG</span>
+              <span className="font-bold text-white tracking-tight text-base">DocMind</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}

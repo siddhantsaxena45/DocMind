@@ -113,7 +113,7 @@ def get_conversation_details(
 
     cur.execute(
         """
-        SELECT id, role, content, sources, created_at
+        SELECT id, role, content, sources, related_questions, research_query, created_at
         FROM messages
         WHERE conversation_id = %s
         ORDER BY created_at ASC
@@ -128,12 +128,16 @@ def get_conversation_details(
     for m in msg_rows:
         srcs = m[3] if isinstance(m[3], list) else (json.loads(m[3]) if m[3] else [])
         citations = [Citation(**s) for s in srcs if isinstance(s, dict)]
+        rel_q = m[4] if isinstance(m[4], list) else (json.loads(m[4]) if m[4] else [])
+        r_query = m[5]
         messages.append(MessageItem(
             id=str(m[0]),
             role=m[1],
             content=m[2],
             sources=citations,
-            created_at=m[4].isoformat() if m[4] else ""
+            related_questions=rel_q,
+            research_query=r_query,
+            created_at=m[6].isoformat() if m[6] else ""
         ))
 
     conv_item = ConversationItem(
@@ -280,7 +284,10 @@ def send_message(
         enable_web_search=web_enabled
     )
 
-    # 5. LLM Synthesis
+    # 5. Extract research query if web search or docs used
+    research_query = llm_service.extract_research_query(user_text) if web_enabled else None
+
+    # 6. LLM Synthesis
     try:
         answer = llm_service.generate_rag_response(
             query=user_text,
@@ -293,15 +300,26 @@ def send_message(
         conn.close()
         raise HTTPException(status_code=500, detail=f"LLM generation failed: {e}")
 
-    # 6. Save assistant message with citations
+    # 7. Generate follow-up / related questions (Perplexity style)
+    related_questions = llm_service.generate_followup_questions(user_text, answer)
+
+    # 8. Save assistant message with citations, related questions, and research query
     citations_data = [c.model_dump() for c in citations]
     cur.execute(
         """
-        INSERT INTO messages (conversation_id, user_id, role, content, sources)
-        VALUES (%s, %s, %s, %s, %s::jsonb)
+        INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
+        VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
         RETURNING id
         """,
-        (conversation_id, current_user.user_id, "assistant", answer, json.dumps(citations_data))
+        (
+            conversation_id,
+            current_user.user_id,
+            "assistant",
+            answer,
+            json.dumps(citations_data),
+            json.dumps(related_questions),
+            research_query
+        )
     )
     assistant_msg_id = str(cur.fetchone()[0])
 
@@ -314,6 +332,8 @@ def send_message(
         message_id=assistant_msg_id,
         answer=answer,
         sources=citations,
+        related_questions=related_questions,
+        research_query=research_query,
         conversation_id=conversation_id
     )
 
@@ -378,16 +398,23 @@ async def stream_message(
         enable_web_search=web_enabled
     )
 
+    # Extract research query for UI status badge
+    research_query = llm_service.extract_research_query(user_text) if web_enabled else None
+
     async def event_generator():
         # 1. Send title if updated
         if new_title:
             yield f"event: title\ndata: {json.dumps({'title': new_title})}\n\n"
 
-        # 2. Send citations
+        # 2. Send research status (Perplexity style status bar)
+        research_status = f"Researched {research_query}" if research_query else "Consulted knowledge base"
+        yield f"event: research\ndata: {json.dumps({'query': research_query or user_text[:40], 'status': research_status, 'sources_count': len(citations)})}\n\n"
+
+        # 3. Send rich citations
         citations_data = [c.model_dump() for c in citations]
         yield f"event: citations\ndata: {json.dumps(citations_data)}\n\n"
 
-        # 3. Stream LLM tokens
+        # 4. Stream LLM tokens
         full_answer = []
         async for chunk in llm_service.stream_rag_response(user_text, chat_history, context):
             full_answer.append(chunk)
@@ -395,16 +422,28 @@ async def stream_message(
 
         complete_text = "".join(full_answer)
 
-        # 4. Save assistant message to DB
+        # 5. Generate follow-up / related questions
+        related_questions = llm_service.generate_followup_questions(user_text, complete_text)
+        yield f"event: related\ndata: {json.dumps(related_questions)}\n\n"
+
+        # 6. Save assistant message to DB
         save_conn = get_db_conn()
         save_cur = save_conn.cursor()
         save_cur.execute(
             """
-            INSERT INTO messages (conversation_id, user_id, role, content, sources)
-            VALUES (%s, %s, %s, %s, %s::jsonb)
+            INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
+            VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
             RETURNING id
             """,
-            (conversation_id, user_id, "assistant", complete_text, json.dumps(citations_data))
+            (
+                conversation_id,
+                user_id,
+                "assistant",
+                complete_text,
+                json.dumps(citations_data),
+                json.dumps(related_questions),
+                research_query
+            )
         )
         msg_id = str(save_cur.fetchone()[0])
         save_cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
@@ -412,7 +451,7 @@ async def stream_message(
         save_cur.close()
         save_conn.close()
 
-        yield f"event: done\ndata: {json.dumps({'message_id': msg_id})}\n\n"
+        yield f"event: done\ndata: {json.dumps({'message_id': msg_id, 'related_questions': related_questions, 'research_query': research_query})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -485,6 +524,8 @@ def regenerate_response(
         enable_web_search=conv["web_search_enabled"]
     )
 
+    research_query = llm_service.extract_research_query(user_text) if conv["web_search_enabled"] else None
+
     # Generate fresh response
     answer = llm_service.generate_rag_response(
         query=user_text,
@@ -492,14 +533,24 @@ def regenerate_response(
         context=context
     )
 
+    related_questions = llm_service.generate_followup_questions(user_text, answer)
+
     citations_data = [c.model_dump() for c in citations]
     cur.execute(
         """
-        INSERT INTO messages (conversation_id, user_id, role, content, sources)
-        VALUES (%s, %s, %s, %s, %s::jsonb)
+        INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
+        VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
         RETURNING id
         """,
-        (conversation_id, current_user.user_id, "assistant", answer, json.dumps(citations_data))
+        (
+            conversation_id,
+            current_user.user_id,
+            "assistant",
+            answer,
+            json.dumps(citations_data),
+            json.dumps(related_questions),
+            research_query
+        )
     )
     assistant_msg_id = str(cur.fetchone()[0])
     cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
@@ -511,5 +562,7 @@ def regenerate_response(
         message_id=assistant_msg_id,
         answer=answer,
         sources=citations,
+        related_questions=related_questions,
+        research_query=research_query,
         conversation_id=conversation_id
     )

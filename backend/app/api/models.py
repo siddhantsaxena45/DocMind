@@ -48,6 +48,9 @@ class Citation(BaseModel):
     page: Optional[int] = None
     snippet: Optional[str] = None
     type: str = "doc"  # 'doc' | 'web'
+    site_name: Optional[str] = None
+    favicon: Optional[str] = None
+    date: Optional[str] = None
 
 # Messages
 class MessageItem(BaseModel):
@@ -55,6 +58,8 @@ class MessageItem(BaseModel):
     role: str
     content: str
     sources: List[Citation] = []
+    related_questions: List[str] = []
+    research_query: Optional[str] = None
     created_at: str
 
 class SendMessageRequest(BaseModel):
@@ -66,6 +71,8 @@ class SendMessageResponse(BaseModel):
     message_id: str
     answer: str
     sources: List[Citation]
+    related_questions: List[str] = []
+    research_query: Optional[str] = None
     conversation_id: str
 
 # Conversations

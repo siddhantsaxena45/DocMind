@@ -49,7 +49,7 @@ export default function LoginView({ onAuth }) {
             </div>
             <h1 className="text-3xl font-bold text-white tracking-tight mb-2">DocMind AI</h1>
             <p className="text-slate-400 text-xs md:text-sm max-w-xs">
-              GPT-like Intelligence with Hybrid RAG & Real-Time Web Search
+              Deep Document Intelligence & Real-Time Web Research
             </p>
           </div>
 

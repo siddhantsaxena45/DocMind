@@ -1,4 +1,6 @@
 import logging
+import re
+from urllib.parse import urlparse
 from typing import List, Dict, Any, Optional
 import httpx
 
@@ -9,15 +11,41 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+def extract_site_metadata(url: str) -> tuple[str, str]:
+    """
+    Returns (site_name, favicon_url)
+    e.g. ("r/Twitch", "https://www.google.com/s2/favicons?domain=reddit.com&sz=64")
+    """
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        if domain.startswith("www."):
+            domain = domain[4:]
+        
+        # Subreddit detection
+        if "reddit.com" in domain:
+            match = re.search(r"/r/([a-zA-Z0-9_]+)", parsed.path)
+            if match:
+                site_name = f"r/{match.group(1)}"
+            else:
+                site_name = "reddit.com"
+        else:
+            site_name = domain
+
+        favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+        return site_name, favicon
+    except Exception:
+        return "Web", ""
+
 class WebSearchService:
     def __init__(self):
-        self.max_results = 5
+        self.max_results = 6
         self.timeout = 8.0
 
-    def search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:
         """
         Executes a web search using DuckDuckGo with fallback mechanisms.
-        Returns a list of dicts: [{"title": ..., "url": ..., "snippet": ..., "type": "web"}]
+        Returns a list of dicts with rich metadata for Perplexity-style source cards.
         """
         results: List[Dict[str, Any]] = []
         clean_query = query.strip()
@@ -33,10 +61,13 @@ class WebSearchService:
                     href = item.get("href", "")
                     body = item.get("body", "")
                     if href and (title or body):
+                        site_name, favicon = extract_site_metadata(href)
                         results.append({
                             "title": title or href,
                             "url": href,
                             "snippet": body[:500],
+                            "site_name": site_name,
+                            "favicon": favicon,
                             "type": "web"
                         })
             if results:
@@ -54,7 +85,7 @@ class WebSearchService:
 
         return results
 
-    def _fallback_html_search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+    def _fallback_html_search(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:
         url = "https://html.duckduckgo.com/html/"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -72,10 +103,13 @@ class WebSearchService:
                     href = links[i].get("href", "")
                     snippet = titles[i].text_content().strip() if i < len(titles) else ""
                     if href:
+                        site_name, favicon = extract_site_metadata(href)
                         results.append({
                             "title": href,
                             "url": href,
                             "snippet": snippet[:500],
+                            "site_name": site_name,
+                            "favicon": favicon,
                             "type": "web"
                         })
         return results
