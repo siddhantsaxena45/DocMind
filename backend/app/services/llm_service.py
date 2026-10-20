@@ -218,11 +218,11 @@ class LLMService:
                 "INSTRUCTIONS:\n"
                 "Formulate 1 to 3 targeted DuckDuckGo search queries to investigate the primary subject (person's real name, company, university, project names, GitHub/LinkedIn profile).\n"
                 "- NEVER output generic search phrases like 'what can u verify about his resume on internet' or 'how to check background'.\n"
-                "- Extract real entity names from the document (e.g., '\"Siddhant Saxena\" \"Jaypee Institute\"', 'siddhantsaxena45 github', '\"SidCode.AI\" Siddhant').\n"
+                "- Extract real entity names from the document (e.g., '\"Company Name\" \"Product\"', 'username github', '\"Project Name\" Author').\n"
                 "- Output ONLY a JSON object with this exact structure:\n"
                 "{\n"
                 '  "queries": ["query 1", "query 2"],\n'
-                '  "topic": "Concise 3-5 word topic for UI badge (e.g. Siddhant Saxena & Projects)"\n'
+                '  "topic": "Concise 3-5 word topic for UI badge (e.g. Entity & Claim Verification)"\n'
                 "}\n"
             )
 

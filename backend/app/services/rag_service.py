@@ -1,36 +1,147 @@
 import re
 import math
 from typing import List, Dict, Any, Optional, Tuple
+from urllib.parse import urlparse, unquote
 from langchain_core.documents import Document
 from app.services.vector_service import vector_service
-from app.services.web_search_service import web_search_service
+from app.services.web_search_service import web_search_service, extract_site_metadata
 from app.services.llm_service import llm_service, is_verification_query
 from app.services.document_service import extract_urls_from_text
 from app.core.database import get_db_conn
 from app.api.models import Citation
 
-def format_url_title(url: str, site_name: str) -> str:
-    u = url.lower()
-    if "github.com/" in u:
-        parts = [p for p in url.split("github.com/")[-1].strip("/").split("/") if p]
-        return f"GitHub: {parts[-1]}" if parts else "GitHub Profile"
-    elif "linkedin.com/in/" in u:
-        return "LinkedIn Profile"
-    elif "leetcode.com/" in u:
-        return "LeetCode Profile"
-    elif "portfolio" in u or "wtlpzutle5" in u:
-        return "Personal Portfolio"
-    elif "sidcode" in u:
-        return "SidCode.AI Platform"
-    elif "lumina" in u or "ai-interviewer" in u:
-        return "Lumina AI Project"
-    elif "zocial" in u:
-        return "Zocial App"
-    elif "docmind" in u or "doc-mind" in u:
-        return "DocMind App"
-    elif site_name and site_name != "Web":
-        return site_name
-    return url[:45]
+KNOWN_PLATFORMS = {
+    "github.com": "GitHub",
+    "gitlab.com": "GitLab",
+    "bitbucket.org": "Bitbucket",
+    "linkedin.com": "LinkedIn",
+    "leetcode.com": "LeetCode",
+    "hackerrank.com": "HackerRank",
+    "codeforces.com": "Codeforces",
+    "kaggle.com": "Kaggle",
+    "huggingface.co": "Hugging Face",
+    "arxiv.org": "arXiv",
+    "biorxiv.org": "bioRxiv",
+    "medrxiv.org": "medRxiv",
+    "wikipedia.org": "Wikipedia",
+    "youtube.com": "YouTube",
+    "youtu.be": "YouTube",
+    "twitter.com": "X (Twitter)",
+    "x.com": "X (Twitter)",
+    "medium.com": "Medium",
+    "substack.com": "Substack",
+    "stackoverflow.com": "Stack Overflow",
+    "reddit.com": "Reddit",
+    "pypi.org": "PyPI",
+    "npmjs.com": "npm",
+    "docker.com": "Docker Hub",
+    "news.ycombinator.com": "Hacker News",
+    "researchgate.net": "ResearchGate",
+    "nature.com": "Nature",
+    "sciencedirect.com": "ScienceDirect",
+    "pubmed.ncbi.nlm.nih.gov": "PubMed",
+    "ieee.org": "IEEE",
+}
+
+HOSTING_DOMAINS = (
+    "vercel.app", "netlify.app", "github.io", "gitlab.io", "pages.dev",
+    "herokuapp.com", "render.com", "railway.app", "web.app", "firebaseapp.com",
+    "fly.dev", "surge.sh", "cloudfront.net"
+)
+
+def format_url_title(url: str, site_name: str = "") -> str:
+    """
+    Universally generates human-readable, professional citation card titles for ANY URL
+    across any document domain (resumes, academic research, medical docs, financial reports, technical architecture).
+    Zero hardcoded project names.
+    """
+    # 1. If an authentic page title from HTML <title> or search result is available, use it!
+    if site_name and site_name not in ("Web", "Verified Link", "Unknown") and not site_name.startswith("http"):
+        clean_title = re.sub(r'\s*([\|\-•—]\s*([A-Za-z0-9\s]+))?$', '', site_name.strip())
+        if len(clean_title) >= 3 and "." not in clean_title:
+            return clean_title[:70]
+
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        if domain.startswith("www."):
+            domain = domain[4:]
+
+        path_parts = [p for p in parsed.path.strip("/").split("/") if p]
+
+        # 2. Check major platforms with structured paths
+        for k_dom, k_name in KNOWN_PLATFORMS.items():
+            if k_dom in domain:
+                if k_dom in ("github.com", "gitlab.com", "bitbucket.org"):
+                    if len(path_parts) >= 2:
+                        return f"{k_name}: {path_parts[0]}/{path_parts[1]}"
+                    elif len(path_parts) == 1:
+                        return f"{k_name}: @{path_parts[0]}"
+                    return f"{k_name} Repository"
+
+                elif k_dom == "linkedin.com":
+                    if len(path_parts) >= 2 and path_parts[0] in ("in", "company", "school"):
+                        profile_name = unquote(path_parts[1]).replace("-", " ").title()
+                        profile_name = re.sub(r'\s+\d{6,}', '', profile_name)
+                        return f"{k_name}: {profile_name}" if profile_name else f"{k_name} Profile"
+                    return f"{k_name} Profile"
+
+                elif k_dom == "leetcode.com":
+                    if len(path_parts) >= 2 and path_parts[0] == "u":
+                        return f"LeetCode: @{path_parts[1]}"
+                    elif len(path_parts) >= 2 and path_parts[0] == "problems":
+                        problem_title = path_parts[1].replace("-", " ").title()
+                        return f"LeetCode: {problem_title}"
+                    return "LeetCode Profile"
+
+                elif k_dom == "arxiv.org":
+                    return f"arXiv: {path_parts[-1]}" if path_parts else "arXiv Research Paper"
+
+                elif k_dom == "wikipedia.org":
+                    if path_parts:
+                        article_title = unquote(path_parts[-1]).replace("_", " ")
+                        return f"Wikipedia: {article_title}"
+                    return "Wikipedia"
+
+                elif k_dom in ("youtube.com", "youtu.be"):
+                    if any("watch" in p or "shorts" in p for p in path_parts) or "youtu.be" in domain:
+                        return "YouTube Video"
+                    elif path_parts and path_parts[0].startswith("@"):
+                        return f"YouTube: {path_parts[0]}"
+                    return "YouTube Channel"
+
+                elif k_dom == "huggingface.co":
+                    if len(path_parts) >= 2:
+                        return f"Hugging Face: {path_parts[0]}/{path_parts[1]}"
+                    return "Hugging Face Model"
+
+                elif path_parts:
+                    clean_slug = unquote(path_parts[-1]).replace("-", " ").replace("_", " ").title()
+                    clean_slug = re.sub(r'\.(html|htm|php|aspx|pdf)$', '', clean_slug, flags=re.IGNORECASE)
+                    return f"{k_name}: {clean_slug[:35]}"
+                return f"{k_name}"
+
+        # 3. Dynamic cloud-hosted web apps (*.vercel.app, *.netlify.app, *.github.io, etc.)
+        for host in HOSTING_DOMAINS:
+            if host in domain:
+                sub = domain.replace(f".{host}", "")
+                words = [w for w in re.split(r'[-_]', sub) if not (len(w) >= 6 and re.search(r'[0-9]', w) and re.search(r'[a-zA-Z]', w))]
+                clean_name = " ".join(words).title() if words else sub.title()
+                return f"{clean_name} (Live App)"
+
+        # 4. Universal fallback: Derive from domain brand & path slug
+        dom_parts = domain.split(".")
+        brand = dom_parts[0].capitalize() if dom_parts else domain
+        if path_parts:
+            last_part = path_parts[-1]
+            clean_slug = unquote(last_part).replace("-", " ").replace("_", " ").title()
+            clean_slug = re.sub(r'\.(html|htm|php|aspx|pdf)$', '', clean_slug, flags=re.IGNORECASE)
+            if len(clean_slug) <= 2 and len(path_parts) >= 2:
+                clean_slug = unquote(path_parts[-2]).replace("-", " ").replace("_", " ").title()
+            return f"{brand}: {clean_slug[:35]}"
+        return f"{brand} Official Site"
+    except Exception:
+        return url[:45]
 
 
 class RAGService:
@@ -287,9 +398,8 @@ class RAGService:
                         verification_urls.append(l)
                 for w in web_results:
                     w_url = w.get("url", "")
-                    if any(dom in w_url.lower() for dom in ["github.com", "linkedin.com", "leetcode.com", "sidcode.ai", "vercel.app", "portfolio"]):
-                        if w_url not in verification_urls:
-                            verification_urls.append(w_url)
+                    if w_url and w_url not in verification_urls and not w_url.startswith("mailto:"):
+                        verification_urls.append(w_url)
 
                 if verification_urls:
                     live_fetched_sources = web_search_service.fetch_multiple_urls(verification_urls[:4])
