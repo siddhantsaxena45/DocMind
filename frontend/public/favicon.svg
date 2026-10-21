@@ -1,14 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1" />
-      <stop offset="100%" stop-color="#06b6d4" />
+    <!-- Metallic Gold Linear Gradient -->
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="30%" stop-color="#fbbf24" />
+      <stop offset="65%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
     </linearGradient>
+
+    <!-- Dark Obsidian Background Gradient with Subtle Radial Amber Warmth -->
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#1c1404" />
+      <stop offset="55%" stop-color="#0a0a0d" />
+      <stop offset="100%" stop-color="#050505" />
+    </radialGradient>
+
+    <!-- Golden Glow Filter -->
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#f59e0b" flood-opacity="0.45" />
+    </filter>
   </defs>
-  <rect x="0" y="0" width="64" height="64" rx="16" fill="url(#grad)" />
-  <g transform="translate(16, 16) scale(1.333)" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polygon points="12 2 2 7 12 12 22 7 12 2" />
-    <polyline points="2 12 12 17 22 12" />
-    <polyline points="2 17 12 22 22 17" />
+
+  <!-- Obsidian Tile with fine Gold Border -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bgGlow)" stroke="url(#goldGradient)" stroke-width="2.5" />
+
+  <!-- DocMind Stacked Layers in Radiant Metallic Gold -->
+  <g transform="translate(16, 17) scale(1.333)" filter="url(#goldGlow)">
+    <!-- Top Layer with subtle gold fill for high visibility -->
+    <polygon points="12 2 2 7 12 12 22 7 12 2" fill="url(#goldGradient)" fill-opacity="0.25" stroke="url(#goldGradient)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Middle Shelf -->
+    <polyline points="2 12 12 17 22 12" stroke="url(#goldGradient)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Base Shelf -->
+    <polyline points="2 17 12 22 22 17" stroke="url(#goldGradient)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
   </g>
+
+  <!-- Sparkle Star in Top Right -->
+  <path d="M48 9L49.3 12.8L53 14L49.3 15.2L48 19L46.7 15.2L43 14L46.7 12.8Z" fill="#fef08a" opacity="0.95" />
 </svg>
