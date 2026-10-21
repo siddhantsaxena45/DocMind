@@ -198,92 +198,178 @@ class WebSearchService:
 
     def fetch_url_content(self, url: str) -> Optional[Dict[str, Any]]:
         """
-        Directly visits a live URL (e.g. GitHub profile/repo, portfolio, project website)
-        and extracts readable text, title, and key metadata for verification.
+        Directly visits and scrapes live web pages (Wikipedia, news articles, tech documentation,
+        blogs, GitHub repos, YouTube channels, official sites) to extract in-depth readable content.
         """
         clean_u = url.strip()
         if not clean_u.startswith("http://") and not clean_u.startswith("https://"):
             clean_u = "https://" + clean_u
 
+        site_name, favicon = extract_site_metadata(clean_u)
+
+        # 1. Specialized Wikipedia Handler (Instant, authoritative, structured encyclopedic extract)
+        if "wikipedia.org/wiki/" in clean_u:
+            try:
+                title_slug = clean_u.split("/wiki/")[-1].split("#")[0].split("?")[0]
+                api_u = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title_slug}"
+                with httpx.Client(timeout=4.0) as client:
+                    w_resp = client.get(api_u, headers={"User-Agent": "DocMindResearchApp/1.0 (info@docmind.ai)"})
+                    if w_resp.status_code == 200:
+                        w_data = w_resp.json()
+                        extract = w_data.get("extract", "")
+                        w_title = w_data.get("title") or "Wikipedia"
+                        if extract:
+                            return {
+                                "url": clean_u,
+                                "title": f"{w_title} - Wikipedia",
+                                "snippet": extract[:1800],
+                                "site_name": "Wikipedia",
+                                "favicon": favicon or "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64",
+                                "type": "web"
+                            }
+            except Exception as e:
+                logger.debug(f"Wikipedia API lookup fallback: {e}")
+
+        # 2. Universal Browser Scraping for All Web Sources
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
         }
 
         try:
-            with httpx.Client(timeout=6.0, follow_redirects=True, headers=headers) as client:
+            with httpx.Client(timeout=5.0, follow_redirects=True, headers=headers) as client:
                 resp = client.get(clean_u)
-                if resp.status_code != 200:
+                if resp.status_code != 200 or not resp.text:
                     return None
 
                 html_text = resp.text
-                site_name, favicon = extract_site_metadata(clean_u)
+                from lxml import html
+                tree = html.fromstring(html_text)
 
-                # Extract title
-                title_match = re.search(r'<title[^>]*>(.*?)</title>', html_text, re.IGNORECASE | re.DOTALL)
-                title = title_match.group(1).strip() if title_match else clean_u
+                # Remove non-content / boilerplate elements
+                for tag in tree.xpath('//script | //style | //nav | //footer | //header | //aside | //noscript | //form | //svg'):
+                    tag.drop_tree()
 
-                # Remove scripts, styles, svg, and nav
-                clean_html = re.sub(r'<(script|style|svg|nav|footer)[^>]*>.*?</\1>', ' ', html_text, flags=re.IGNORECASE | re.DOTALL)
+                # Title extraction
+                title_elem = tree.xpath('//title')
+                title = title_elem[0].text_content().strip() if title_elem else clean_u
+                title = re.sub(r'\s+', ' ', title).strip()
 
-                # Special parsing for GitHub profiles & repositories
-                extracted_lines: List[str] = []
+                # Specialized parsing for GitHub
                 if "github.com" in clean_u.lower():
-                    repo_matches = re.findall(r'href="/[^/]+/([^/"]+)"[^>]*itemprop="name codeRepository"', clean_html)
-                    if not repo_matches:
-                        repo_matches = re.findall(r'<span class="repo"[^>]*>([^<]+)</span>', clean_html)
+                    repo_matches = tree.xpath('//a[@itemprop="name codeRepository"]/text()')
+                    bio_matches = tree.xpath('//div[contains(@class, "user-profile-bio")]/text()')
+                    readme_matches = tree.xpath('//article[contains(@class, "markdown-body")]//p/text()')
+                    extracted = []
+                    if bio_matches:
+                        extracted.append("Bio: " + " ".join(bio_matches).strip())
                     if repo_matches:
-                        extracted_lines.append(f"Public Repositories: {', '.join(set(repo_matches[:8]))}")
+                        extracted.append("Repositories: " + ", ".join(repo_matches[:8]).strip())
+                    if readme_matches:
+                        extracted.append("README: " + " ".join(readme_matches[:3]).strip())
+                    if extracted:
+                        return {
+                            "url": clean_u,
+                            "title": title[:100],
+                            "snippet": (" | ".join(extracted))[:1800],
+                            "site_name": site_name,
+                            "favicon": favicon,
+                            "type": "web"
+                        }
 
-                    bio_match = re.search(r'<div class="p-note user-profile-bio[^"]*"[^>]*>([\s\S]*?)</div>', clean_html)
-                    if bio_match:
-                        bio_text = re.sub(r'<[^>]+>', ' ', bio_match.group(1)).strip()
-                        if bio_text:
-                            extracted_lines.append(f"GitHub Bio: {bio_text}")
-
-                elif "youtube.com" in clean_u.lower() or "youtu.be" in clean_u.lower():
+                # Specialized parsing for YouTube
+                if "youtube.com" in clean_u.lower() or "youtu.be" in clean_u.lower():
                     desc_match = re.search(r'<meta\s+(?:name|property)=["\'](?:description|og:description)["\']\s+content=["\'](.*?)["\']', html_text, re.IGNORECASE)
-                    if desc_match:
-                        extracted_lines.append(f"YouTube Description: {desc_match.group(1).strip()}")
-                    og_title = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\'](.*?)["\']', html_text, re.IGNORECASE)
-                    if og_title:
-                        title = og_title.group(1).strip()
+                    desc_text = desc_match.group(1).strip() if desc_match else ""
+                    return {
+                        "url": clean_u,
+                        "title": title[:100],
+                        "snippet": desc_text[:1500] if desc_text else "YouTube Channel / Video",
+                        "site_name": site_name,
+                        "favicon": favicon,
+                        "type": "web"
+                    }
 
-                body_text = re.sub(r'<[^>]+>', ' ', clean_html)
-                body_text = re.sub(r'\s+', ' ', body_text).strip()
+                # General Website / Article Extraction (News, Docs, Blogs, Portals)
+                # Look for semantic content containers first
+                main_nodes = tree.xpath('//article | //main | //*[@role="main"] | //div[contains(@class, "article")] | //div[contains(@class, "content")] | //div[contains(@class, "post")]')
+                target = main_nodes[0] if main_nodes else tree
 
-                if extracted_lines:
-                    snippet = " | ".join(extracted_lines) + " — " + body_text[:600]
+                # Extract headings, informative paragraphs, and data tables
+                headings = [h.text_content().strip() for h in target.xpath('.//h1 | .//h2 | .//h3') if len(h.text_content().strip()) > 5]
+                paragraphs = [p.text_content().strip() for p in target.xpath('.//p | .//li') if len(p.text_content().strip()) > 35]
+
+                # Extract data tables (benchmarks, specs, pricing, comparisons)
+                table_rows = []
+                for tr in target.xpath('.//table//tr')[:6]:
+                    cells = [re.sub(r'\s+', ' ', c.text_content()).strip() for c in tr.xpath('.//th | .//td') if c.text_content().strip()]
+                    if cells:
+                        table_rows.append(" | ".join(cells[:6]))
+
+                content_parts = []
+                if headings:
+                    content_parts.append("Key Sections: " + " • ".join(headings[:5]))
+                if paragraphs:
+                    content_parts.append("\n".join(paragraphs[:8]))
                 else:
-                    snippet = body_text[:900]
+                    raw_body = re.sub(r'\s+', ' ', target.text_content()).strip()
+                    content_parts.append(raw_body[:1400])
+
+                if table_rows:
+                    content_parts.append("Data & Tables:\n" + "\n".join(table_rows))
+
+                snippet = "\n".join(content_parts)
+                snippet = re.sub(r'\s+', ' ', snippet).strip()
+
+                if len(snippet) < 40:
+                    return None
 
                 return {
                     "url": clean_u,
-                    "title": title[:100],
-                    "snippet": snippet,
+                    "title": title[:120],
+                    "snippet": snippet[:2000],
                     "site_name": site_name,
                     "favicon": favicon,
                     "type": "web"
                 }
         except Exception as e:
-            logger.warning(f"Could not fetch live content for {clean_u}: {e}")
+            logger.debug(f"Live web scrape for {clean_u} failed: {e}")
             return None
 
-    def fetch_multiple_urls(self, urls: List[str], max_urls: int = 3) -> List[Dict[str, Any]]:
+    def fetch_multiple_urls(self, urls: List[str], max_urls: int = 5) -> List[Dict[str, Any]]:
         """
-        Fetches live web content from multiple target URLs in sequence.
+        Fetches live web content from multiple target URLs in PARALLEL.
+        Extracts rich article text from top distinct websites in ~1 second.
         """
+        from concurrent.futures import ThreadPoolExecutor
         results: List[Dict[str, Any]] = []
         seen = set()
+        clean_candidates = []
+
         for u in urls:
-            if not u or u.lower() in seen:
+            if not u:
                 continue
-            seen.add(u.lower())
-            res = self.fetch_url_content(u)
-            if res:
-                results.append(res)
-            if len(results) >= max_urls:
+            u_clean = u.strip()
+            if u_clean.lower() in seen or any(spam in u_clean.lower() for spam in SPAM_MARKETPLACE_DOMAINS):
+                continue
+            seen.add(u_clean.lower())
+            clean_candidates.append(u_clean)
+            if len(clean_candidates) >= max_urls:
                 break
+
+        if not clean_candidates:
+            return results
+
+        try:
+            with ThreadPoolExecutor(max_workers=min(len(clean_candidates), 5)) as executor:
+                scraped = list(executor.map(self.fetch_url_content, clean_candidates))
+                for item in scraped:
+                    if item and item.get("snippet"):
+                        results.append(item)
+        except Exception as e:
+            logger.warning(f"Parallel URL fetching error: {e}")
+
         return results
 
 

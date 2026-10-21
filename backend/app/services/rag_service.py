@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from urllib.parse import urlparse, unquote
 from langchain_core.documents import Document
 from app.services.vector_service import vector_service
-from app.services.web_search_service import web_search_service, extract_site_metadata
+from app.services.web_search_service import web_search_service, extract_site_metadata, SPAM_MARKETPLACE_DOMAINS
 from app.services.llm_service import llm_service, is_verification_query
 from app.services.document_service import extract_urls_from_text
 from app.core.database import get_db_conn
@@ -417,59 +417,109 @@ class RAGService:
                         verification_urls.append(w_url)
 
                 if verification_urls:
-                    live_fetched_sources = web_search_service.fetch_multiple_urls(verification_urls[:4])
+                    live_fetched_sources = web_search_service.fetch_multiple_urls(verification_urls[:5])
                     if live_fetched_sources:
                         context_parts.append(
-                            "\n### LIVE VERIFIED EVIDENCE (Directly Fetched from Document Links & Online Profiles):\n"
+                            "\n### LIVE VERIFIED EVIDENCE (Directly Scraped from Document Links & Online Profiles):\n"
                             "DocMind directly visited the live web pages to check if the claims in the document match what is live:"
                         )
                         for l_idx, live_item in enumerate(live_fetched_sources, start=1):
                             l_url = live_item.get("url", "")
                             l_title = live_item.get("title", "")
                             l_snippet = live_item.get("snippet", "")
+                            l_site = live_item.get("site_name", "")
                             context_parts.append(
-                                f"[[LIVE_LINK_{l_idx}]] Target URL: {l_url}\nPage Title: {l_title}\nLive Content:\n{l_snippet}"
+                                f"[[WEB_REF_{l_idx}]] [[LIVE_LINK_{l_idx}]] Source: {l_site} | Title: {l_title}\nTarget URL: {l_url}\nLive Verified Content:\n{l_snippet}"
                             )
             else:
                 search_queries, search_topic = llm_service.formulate_web_research_queries(query, chat_history=chat_history)
-                web_results = web_search_service.search_multi(queries=search_queries, max_results=8)
-                if web_results:
-                    context_parts.append(
-                        f"\n### REAL-TIME WEB SEARCH EVIDENCE (Targeted Searches: {', '.join(search_queries)}):\n"
-                        f"DocMind gathered fresh facts and up-to-date sources using multi-angle queries."
-                    )
+                web_results = web_search_service.search_multi(queries=search_queries, max_results=10)
 
-                # LIVE FETCH: Inspect referenced links or discovered profiles/channels (YouTube, GitHub, LinkedIn, .ai)
-                inspect_candidates = list(extracted_doc_links)
+                # Multi-Source Diverse Domain Candidate Selection (Google AI Search & Perplexity style)
+                # Select top candidate URLs across distinct authoritative domains for deep live scraping
+                scrape_candidates = []
+                seen_domains = set()
+
+                def _get_clean_domain(u: str) -> str:
+                    try:
+                        net = urlparse(u).netloc.lower()
+                        return net[4:] if net.startswith("www.") else net
+                    except Exception:
+                        return ""
+
+                # 1. User or document explicit links first
+                for u in extracted_doc_links:
+                    if u and not u.startswith("mailto:"):
+                        d = _get_clean_domain(u)
+                        if d:
+                            seen_domains.add(d)
+                        scrape_candidates.append(u)
+                        if len(scrape_candidates) >= 5:
+                            break
+
+                # 2. Add top web results across distinct domains (Wikipedia, News, Docs, Tech Sites, Blogs)
                 for w in web_results:
                     wu = w.get("url", "")
-                    if wu and any(p in wu.lower() for p in ["youtube.com", "youtu.be", "github.com", "linkedin.com", ".ai"]):
-                        if wu not in inspect_candidates and not wu.startswith("mailto:"):
-                            inspect_candidates.append(wu)
+                    if not wu or wu.startswith("mailto:"):
+                        continue
+                    d = _get_clean_domain(wu)
+                    if not d or any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS):
+                        continue
+                    if d not in seen_domains:
+                        seen_domains.add(d)
+                        scrape_candidates.append(wu)
+                        if len(scrape_candidates) >= 5:
+                            break
 
-                if inspect_candidates:
-                    query_live_sources = web_search_service.fetch_multiple_urls(inspect_candidates[:4])
-                    if query_live_sources:
-                        live_fetched_sources.extend(query_live_sources)
-                        context_parts.append("\n### LIVE VISITED EVIDENCE (Directly Fetched from Target Profiles & URLs):")
-                        for l_idx, live_item in enumerate(query_live_sources, start=1):
-                            context_parts.append(
-                                f"[[LIVE_LINK_{l_idx}]] Target URL: {live_item.get('url')}\nPage Title: {live_item.get('title')}\nLive Content:\n{live_item.get('snippet')}"
-                            )
+                # 3. If fewer than 4 candidates, allow clean secondary results from the same domains
+                if len(scrape_candidates) < 4:
+                    for w in web_results:
+                        wu = w.get("url", "")
+                        if wu and wu not in scrape_candidates and not wu.startswith("mailto:"):
+                            d = _get_clean_domain(wu)
+                            if d and not any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS):
+                                scrape_candidates.append(wu)
+                                if len(scrape_candidates) >= 4:
+                                    break
 
-            if web_results:
-                for idx, item in enumerate(web_results, start=1):
-                    w_title = item.get("title", "Web Source")
-                    w_url = item.get("url", "")
-                    w_snippet = item.get("snippet", "")
+                # 4. Live parallel scraping across distinct sources (~1 sec)
+                if scrape_candidates:
+                    live_fetched_sources = web_search_service.fetch_multiple_urls(scrape_candidates, max_urls=5)
+
+                if live_fetched_sources:
                     context_parts.append(
-                        f"[[WEB_REF_{idx}]] Title: {w_title}\nURL: {w_url}\nSnippet: {w_snippet}"
+                        f"\n### REAL-TIME WEB RESEARCH EVIDENCE (Multi-Source Synthesis across {len(live_fetched_sources)} authoritative websites):\n"
+                        f"Targeted searches executed: {', '.join(search_queries)}\n"
+                        f"DocMind visited and extracted in-depth article content and verified facts directly from live web pages:\n"
                     )
+                    for l_idx, live_item in enumerate(live_fetched_sources, start=1):
+                        l_url = live_item.get("url", "")
+                        l_title = live_item.get("title", "")
+                        l_snippet = live_item.get("snippet", "")
+                        l_site = live_item.get("site_name", "")
+                        context_parts.append(
+                            f"[[WEB_REF_{l_idx}]] Source: {l_site} | Title: {l_title}\n"
+                            f"URL: {l_url}\n"
+                            f"Live Scraped Content & Facts:\n{l_snippet}\n"
+                        )
+
+                # Add secondary search hits not in the live scraped set
+                scraped_urls = {item.get("url", "").rstrip("/").lower() for item in live_fetched_sources}
+                additional_results = [w for w in web_results if w.get("url", "").rstrip("/").lower() not in scraped_urls]
+                if additional_results:
+                    context_parts.append("\n### ADDITIONAL SEARCH CONTEXT & HITS:")
+                    offset = len(live_fetched_sources)
+                    for r_idx, w in enumerate(additional_results[:4], start=offset + 1):
+                        context_parts.append(
+                            f"[[WEB_REF_{r_idx}]] Title: {w.get('title', 'Web Source')}\n"
+                            f"URL: {w.get('url', '')}\n"
+                            f"Snippet: {w.get('snippet', '')}\n"
+                        )
 
         # 4. Assemble Rich Citations: Web & Verified Link Cards FIRST, followed by Document Cards
         seen_urls = set()
 
-        # 4a. Add live fetched verified sources
+        # 4a. Add live fetched verified sources (these correspond 1-to-1 with [[WEB_REF_1]], [[WEB_REF_2]], etc.)
         for live_item in live_fetched_sources:
             l_url = live_item.get("url", "").rstrip("/")
             if l_url and l_url.lower() not in seen_urls:
@@ -479,31 +529,13 @@ class RAGService:
                         title=live_item.get("title") or format_url_title(l_url, live_item.get("site_name", "")),
                         url=l_url,
                         snippet=live_item.get("snippet", "")[:300],
-                        site_name=live_item.get("site_name") or "Verified Link",
+                        site_name=live_item.get("site_name") or "Verified Source",
                         favicon=live_item.get("favicon"),
                         type="web"
                     )
                 )
 
-        # 4b. Add all extracted links from the document (GitHub, LinkedIn, Portfolio, Projects, etc.)
-        for raw_url in extracted_doc_links:
-            clean_u = raw_url.strip().rstrip("/")
-            if clean_u and clean_u.lower() not in seen_urls and not clean_u.startswith("mailto:"):
-                seen_urls.add(clean_u.lower())
-                site_name, favicon = extract_site_metadata(clean_u)
-                card_title = format_url_title(clean_u, site_name)
-                web_citations.append(
-                    Citation(
-                        title=card_title,
-                        url=clean_u,
-                        snippet=f"Verified online link referenced in document: {clean_u}",
-                        site_name=site_name,
-                        favicon=favicon,
-                        type="web"
-                    )
-                )
-
-        # 4c. Add search results from DuckDuckGo
+        # 4b. Add additional search results from DuckDuckGo
         for item in web_results:
             w_url = item.get("url", "").rstrip("/")
             if w_url and w_url.lower() not in seen_urls:
@@ -515,6 +547,24 @@ class RAGService:
                         snippet=item.get("snippet", "")[:300],
                         site_name=item.get("site_name") or "Web",
                         favicon=item.get("favicon"),
+                        type="web"
+                    )
+                )
+
+        # 4c. Add all extracted links from the document (GitHub, LinkedIn, Portfolio, Projects, etc.)
+        for raw_url in extracted_doc_links:
+            clean_u = raw_url.strip().rstrip("/")
+            if clean_u and clean_u.lower() not in seen_urls and not clean_u.startswith("mailto:"):
+                seen_urls.add(clean_u.lower())
+                site_name, favicon = extract_site_metadata(clean_u)
+                card_title = format_url_title(clean_u, site_name)
+                web_citations.append(
+                    Citation(
+                        title=card_title,
+                        url=clean_u,
+                        snippet=f"Verified online link: {clean_u}",
+                        site_name=site_name,
+                        favicon=favicon,
                         type="web"
                     )
                 )
