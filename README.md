@@ -2,8 +2,8 @@
 
 # 🧠 DocMind AI
 
-### State-of-the-Art Document Intelligence & Real-Time AI Search Engine
-**Google AI Overview & Perplexity-Grade Synthesis • Universal Multi-Doc Hyperlink Parsing • Multi-Domain Parallel Live Scraping • Hybrid Vector & Lexical RAG (RRF) • 100% Free-Tier Architecture**
+### Next-Generation Document Intelligence & Perplexity-Grade AI Research Engine
+**Google AI Overview & Perplexity Synthesis • Universal Multi-Doc Hyperlink Extraction • Multi-Engine Fast Search Cascade • Hybrid Vector & Lexical RAG (RRF) • 100% Free-Tier Architecture**
 
 <p align="center">
   <img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 19" />
@@ -18,7 +18,15 @@
 </p>
 
 <p align="center">
-  <strong>DocMind AI</strong> is an enterprise-grade document intelligence and real-time research engine inspired by <strong>Google AI Overviews</strong> and <strong>Perplexity AI</strong>. It unifies <strong>Per-Chat Isolated Knowledge Bases</strong>, <strong>Universal Inline Hyperlink Parsing across all document formats</strong>, <strong>Multi-Domain Deep Parallel Web Scraping</strong>, <strong>Context-Aware Fact Verification</strong>, <strong>Hybrid Vector & Lexical RAG (RRF)</strong>, <strong>Multimodal Vision OCR</strong>, and <strong>Automated Multi-Key API Rotation</strong>.
+  <a href="https://doc-mind-eight.vercel.app" target="_blank"><strong>🚀 Live Demo</strong></a> •
+  <a href="#-system-architecture--workflow-pipeline"><strong>🏗️ Architecture</strong></a> •
+  <a href="#-core-capabilities--agentic-features"><strong>🌟 Features</strong></a> •
+  <a href="#-quickstart--local-installation"><strong>⚡ Quickstart</strong></a> •
+  <a href="#-api--server-sent-events-sse-reference"><strong>📡 API Reference</strong></a>
+</p>
+
+<p align="center">
+  <strong>DocMind AI</strong> is an enterprise-grade document intelligence and real-time research engine inspired by <strong>Google AI Overviews</strong> and <strong>Perplexity AI</strong>. It seamlessly bridges <strong>Per-Chat Isolated Knowledge Bases</strong>, <strong>Universal Inline Hyperlink Parsing across all document formats</strong>, <strong>Multi-Engine Live Web Cascading</strong>, <strong>Anti-Throttling Cloud IP Fallbacks</strong>, <strong>Hybrid Vector & Lexical RAG (RRF)</strong>, <strong>Multimodal Vision OCR</strong>, and <strong>Automated Multi-Key API Rotation</strong>.
 </p>
 
 </div>
@@ -30,14 +38,14 @@
 - [✨ Key Architectural Highlights](#-key-architectural-highlights)
 - [🌟 Core Capabilities & Agentic Features](#-core-capabilities--agentic-features)
   - [1. Google AI Overview & Perplexity-Style Synthesis](#1-google-ai-overview--perplexity-style-synthesis)
-  - [2. Universal Inline Hyperlink Parsing Across ALL Document Types](#2-universal-inline-hyperlink-parsing-across-all-document-types)
-  - [3. Deep Multi-Domain Parallel Web Scraping](#3-deep-multi-domain-parallel-web-scraping)
-  - [4. Grounded Citation Verification & Source Cards](#4-grounded-citation-verification--source-cards)
-  - [5. Context-Aware Verification Search & Entity Planning](#5-context-aware-verification-search--entity-planning)
-  - [6. Hybrid Search Pipeline (Vector + BM25 + Reciprocal Rank Fusion)](#6-hybrid-search-pipeline-vector--bm25--reciprocal-rank-fusion)
-  - [7. Interactive Chat Workflow (Edit Messages, Try Again, Follow-ups)](#7-interactive-chat-workflow-edit-messages-try-again-follow-ups)
-  - [8. Multi-Key API Key Rotation (100% Free Tier Resilient)](#8-multi-key-api-key-rotation-100-free-tier-resilient)
-  - [9. Per-Chat Isolated Knowledge Bases & RLS Shield](#9-per-chat-isolated-knowledge-bases--rls-shield)
+  - [2. Multi-Engine Fast Search Cascade & Cloud Anti-Throttling](#2-multi-engine-fast-search-cascade--cloud-anti-throttling)
+  - [3. Multi-Platform Live Search & Scraping (Kick, Twitch, GitHub, Reddit, YouTube, Wikipedia)](#3-multi-platform-live-search--scraping-kick-twitch-github-reddit-youtube-wikipedia)
+  - [4. Universal Inline Hyperlink Parsing Across ALL Document Types](#4-universal-inline-hyperlink-parsing-across-all-document-types)
+  - [5. Grounded Citations & Interactive Source Cards](#5-grounded-citations--interactive-source-cards)
+  - [6. Hybrid Search Pipeline (Dense Vector + BM25 Lexical + Reciprocal Rank Fusion)](#6-hybrid-search-pipeline-dense-vector--bm25-lexical--reciprocal-rank-fusion)
+  - [7. Interactive Chat Workflows (Edit Prompts, Try Again, Follow-ups, Public Sharing)](#7-interactive-chat-workflows-edit-prompts-try-again-follow-ups-public-sharing)
+  - [8. Multi-Key API Key Rotation (100% Free-Tier Resilient)](#8-multi-key-api-key-rotation-100-free-tier-resilient)
+  - [9. Per-Chat Isolated Knowledge Bases & Supabase RLS Shield](#9-per-chat-isolated-knowledge-bases--supabase-rls-shield)
 - [🏗️ System Architecture & Workflow Pipeline](#️-system-architecture--workflow-pipeline)
 - [💻 Technology Stack](#-technology-stack)
 - [📁 Project Directory Structure](#-project-directory-structure)
@@ -51,80 +59,92 @@
   - [Backend Deployment (Render / Railway / VPS)](#backend-deployment-render--railway--vps)
   - [Database Setup (Supabase PostgreSQL)](#database-setup-supabase-postgresql)
 - [📡 API & Server-Sent Events (SSE) Reference](#-api--server-sent-events-sse-reference)
+- [🧪 Testing & Quality Assurance](#-testing--quality-assurance)
 - [📄 License & Author](#-license--author)
 
 ---
 
 ## ✨ Key Architectural Highlights
 
-* **Google AI Search & Perplexity-Grade Engine:** Multi-source facts synthesized into clean executive summaries, comparison tables, bold benchmarks, inline citation badges (`[1]`, `[2]`), and `**Key takeaway:**` callouts.
-* **Universal Document Hyperlink Extraction:** Parses underlying XML relationship trees and PDF annotation objects (`/Annots` $\to$ `/URI`) so links inside PDFs, Word docs, PowerPoint decks, and Excel sheets are never lost during RAG chunking.
-* **Parallel Multi-Domain Scraping:** Scrapes up to 5 diverse authoritative domains (Wikipedia REST API, news, tech documentation, blogs, official portals) in parallel via `ThreadPoolExecutor` within **~1.2 seconds**.
-* **Grounded Source Filtering:** Dual-phase evaluation verifies which sources were *actually cited* in the generated answer. Only grounded sources appear in the `Cited Sources` carousel, while all evaluated links remain inspectable in the `All Sources` modal.
-* **Hybrid RAG with Reciprocal Rank Fusion (RRF $k=60$):** Combines dense vector semantics (`text-embedding-004`) in Pinecone Serverless with sparse BM25 lexical keyword retrieval in PostgreSQL.
-* **100% Free-Tier Resilient:** Seamlessly rotates through up to 20 Google Gemini API keys with automated 429 recovery, DuckDuckGo free search, Pinecone free serverless tier, and Supabase free PostgreSQL.
+* **Perplexity & Google AI Overview Synthesis:** Generates high-density research answers with executive summaries, GFM comparison tables, bold benchmark highlights, interactive citation pills (`[1]`, `[2]`), and `**Key takeaway:**` boxes.
+* **Multi-Engine Fast Web Cascade:** Eliminates cloud datacenter rate limits on Render/AWS/GCP by cascading across `ddgs` (configured with `backend="bing,brave,duckduckgo"` to bypass Mojeek timeouts), direct **Bing HTML search**, **Google News RSS**, and **DuckDuckGo Lite**.
+* **Specialized Platform Integration:** Direct real-time metadata lookup and extraction for **Kick.com channels & live status**, **Twitch**, **GitHub repositories & stars**, **Reddit discussions**, **YouTube videos**, and **Wikipedia OpenSearch**.
+* **Universal Document Hyperlink Extraction:** Traverses underlying PDF `/Annots` `/URI` dictionaries and Word OpenXML relationship trees (`document.xml.rels`) so embedded links inside resumes, reports, and spreadsheets are preserved during RAG chunking.
+* **Framework & Technology Hygiene:** Distinguishes technical libraries (`Socket.io`, `Node.js`, `React.js`, `Express.js`, `BuiltSidCode.AI`) from candidate project links, preventing hallucinated "hyperlink formatting bug" criticisms.
+* **Grounded Dual-Phase Citation Filtering:** Only sources *actually cited in the synthesized text* appear in the bottom `Cited Sources` carousel, while all evaluated candidates remain available in the `All Sources` modal.
+* **Hybrid RAG with Reciprocal Rank Fusion (RRF $k=60$):** Fuses dense vector semantics (`text-embedding-004`) in Pinecone Serverless with sparse BM25 keyword search in Supabase PostgreSQL.
+* **100% Free-Tier Resilient:** Seamlessly rotates through up to 20 Google Gemini API keys with automated 429 self-healing, Pinecone free serverless tier, and Supabase free PostgreSQL.
 
 ---
 
 ## 🌟 Core Capabilities & Agentic Features
 
 ### 1. Google AI Overview & Perplexity-Style Synthesis
-DocMind does not return vague summaries or raw snippet aggregations. When web search is enabled, it generates high-density research answers modeled after Google AI Overviews and Perplexity:
+DocMind does not return superficial summaries or raw snippet cut-and-pastes. When web search is enabled, it generates high-density research answers modeled after Google AI Overviews and Perplexity:
 * **Executive Summary:** Upfront comprehensive overview answering the core question in authoritative prose.
-* **Cross-Source Fact Synthesis:** Merges facts, benchmarks, and perspectives from distinct domains instead of reciting a single site.
-* **Structured Markdown Tables:** Formats specs, performance metrics, pricing, and entity comparisons into clean GitHub-Flavored Markdown (GFM) tables:
+* **Cross-Source Fact Synthesis:** Synthesizes metrics, timestamps, and perspectives from distinct domains instead of reciting a single site.
+* **Structured GFM Comparison Tables:** Formats specs, performance metrics, pricing, and entity comparisons into clean GitHub-Flavored Markdown (GFM) tables:
   ```markdown
-  | Model / Option | Context Window | Benchmark (MMLU) | Pricing (per 1M) |
-  | :--- | :--- | :--- | :--- |
-  | Option A | 1M tokens | 88.5% | $0.15 |
-  | Option B | 128k tokens | 87.2% | $3.00 |
+  | Metric / Feature | Option A | Option B |
+  | :--- | :--- | :--- |
+  | Context Window | 1M tokens | 128k tokens |
+  | Pricing (per 1M) | $0.15 | $3.00 |
   ```
+* **Clean Multi-Line Cell Rendering:** Table cells with multi-line information are rendered as structured lines (bold title + secondary description) with zero literal `<br>` tags.
 * **Data Point Highlighting:** Highlights dates, numbers, metrics, and percentages in bold (e.g. **38.8M subscribers**, **95.2% accuracy**, **$10M net worth**).
-* **Numbered Citation Badges:** References sources directly with `[1]`, `[2]` or markdown links `[Source Title](URL)`.
+* **Interactive Numbered Citation Badges:** References sources directly with `[1]`, `[2]` badges that smoothly scroll and pulse-highlight the matching source card.
 * **Key Takeaway Callout:** Concludes with an actionable `**Key takeaway:**` box.
 
 ---
 
-### 2. Universal Inline Hyperlink Parsing Across ALL Document Types
-In conventional RAG systems, embedded document hyperlinks disappear during plain-text extraction. DocMind extracts underlying link objects across every format:
+### 2. Multi-Engine Fast Search Cascade & Cloud Anti-Throttling
+When running on cloud hosting platforms (such as Render, AWS, or GCP), search engines frequently rate-limit or block datacenter IP addresses:
+1. **Mojeek Timeout Prevention:** In modern `ddgs` versions, default fallback queries target Mojeek, which drops cloud connections and stalls for 4+ seconds. DocMind explicitly specifies `backend="bing,brave,duckduckgo"`, bypassing Mojeek entirely.
+2. **2.5s Fail-Fast Timeout:** Searches fail over rapidly rather than hanging the user's streaming connection.
+3. **Direct Bing HTML Search (`search_bing_html`):** Queries Bing web search directly with desktop browser headers, XPath, and regex extractors—completely immune to datacenter IP rate limits.
+4. **Google News RSS Search (`search_google_news`):** Queries Google News RSS (`https://news.google.com/rss/search?q=...`), returning real-time verified articles, publisher attribution, and timestamps with zero IP blocks.
+5. **DuckDuckGo Lite (`_fallback_lite_search`):** Server-rendered HTML fallback that avoids Cloudflare bot challenges.
+6. **Multi-Query Circuit Breaker:** When Query 1 trips a rate limit, subsequent queries in the same multi-query batch immediately skip to Bing and Google News, saving 5–8 seconds of latency.
+
+---
+
+### 3. Multi-Platform Live Search & Scraping (Kick, Twitch, GitHub, Reddit, YouTube, Wikipedia)
+Rather than relying solely on generic search snippets, DocMind directly interfaces with platforms:
+* **Kick Channels (`search_kick`):** Direct API lookup at `https://kick.com/api/v2/channels/{slug}` with HTML fallback, extracting follower counts, live broadcast status, and bios.
+* **Twitch:** Live creator discovery and streaming profiles.
+* **GitHub Public Search API (`search_github`):** Queries `api.github.com/search/repositories`, returning repository full names, star counts, primary languages, and descriptions.
+* **Reddit Discussions (`search_reddit`):** Queries `reddit.com/search.json`, extracting thread titles, target subreddits (`r/...`), and community discussion excerpts.
+* **YouTube Results (`search_youtube`):** Directly queries YouTube search and parses verified channel handles and video metadata.
+* **Wikipedia REST API (`search_wikipedia`):** Direct OpenSearch query at `en.wikipedia.org/w/api.php` for encyclopedic definitions.
+* **Parallel Deep Scraper:** Uses `ThreadPoolExecutor` and `httpx` to live-scrape 4–5 candidate web articles across distinct root domains in parallel in **~1.2 seconds**.
+
+---
+
+### 4. Universal Inline Hyperlink Parsing Across ALL Document Types
+Conventional RAG systems discard underlying link objects when converting documents to plaintext. DocMind extracts underlying link objects across every format:
 * **PDFs & LaTeX / Overleaf (`.pdf`):** Inspects PDF annotation trees (`/Annots` $\to$ `/Subtype == /Link` $\to$ `/A` $\to$ `/URI`) and inlines them directly into the respective page text (`[Page 1 Embedded Links: ...]`).
 * **Word Documents (`.docx`):** Traverses OpenXML relationship trees (`word/_rels/document.xml.rels`), mapping relationship IDs (`rIdX`) to target URLs and inlines `<w:hyperlink>` elements as `[Text](url)`.
 * **PowerPoint Presentations (`.pptx`):** Inspects slide relationships (`slideN.xml.rels`) to preserve slide-level hyperlinks and plaintext URLs.
 * **Excel Spreadsheets (`.xlsx`):** Inspects `cell.hyperlink.target` and inlines links next to cell values (`Value (https://...)`).
 * **Plaintext & Markdown (`.txt`, `.md`, `.csv`):** Extracts Markdown syntax `[title](url)` and plaintext domain handles (GitHub, LinkedIn, LeetCode, Kaggle, Hugging Face).
 * **Scanned Images & Receipts (`.png`, `.jpg`, `.webp`):** Uses Google Gemini Multimodal Vision OCR to extract text and links from image files.
+* **Technology Framework Hygiene:** Guards technical terms (`Socket.io`, `Node.js`, `Express.js`, `React.js`, `BuiltSidCode.AI`) against false-positive URL matching.
 
 ---
 
-### 3. Deep Multi-Domain Parallel Web Scraping
-Rather than displaying superficial 1-line search snippets:
-1. **Multi-Angle Query Generation:** Formulates 2–3 targeted, temporally-aware queries for the current year.
-2. **Diverse Domain Selection:** Selects top search candidates across **distinct root domains** (e.g., 1 Wikipedia article, 1 official documentation page, 1 news report, 1 technical blog) to avoid duplicate domain bias.
-3. **Wikipedia REST API:** Direct lookup at `en.wikipedia.org/api/rest_v1/page/summary/{slug}` providing instant encyclopedic facts.
-4. **Universal HTML Article Scraper:** Extracts semantic containers (`<article>`, `<main>`), headings (`h1`–`h3`), content paragraphs (`<p>`, `<li>`), and data tables (`<table>`), while dropping navigation bars, headers, footers, and advertisements.
-5. **Parallel Scraping:** Employs `ThreadPoolExecutor` with concurrent `httpx` workers to live-scrape 4–5 distinct websites in parallel in **~1.2 seconds**.
-
----
-
-### 4. Grounded Citation Verification & Source Cards
+### 5. Grounded Citations & Interactive Source Cards
 To eliminate hallucinated or misleading source cards:
 * **Dual-Phase Grounding ([`filter_and_ground_citations`](file:///d:/DocMind/backend/app/services/rag_service.py)):** After the LLM generates its response, DocMind cross-references the answer text against citation indices (`[1]`, `[2]`), explicit URLs, domain names, and titles.
 * **Cited Sources vs. All Evaluated:** Only sources that directly contributed facts receive `used_in_answer = True` and appear in the `Cited Sources` carousel.
-* **Anti-Spam Guard:** E-commerce marketplace links (AliExpress, Temu, Alibaba) are strictly blocked from general research citations.
-* **Rich Source Cards:** Cards display Google S2 64px domain favicons, platform badges (`YouTube`, `Wikipedia`, `GitHub`, `r/subreddit`), 2-line title clamps, and a click-through URL.
+* **Interactive Source Pill Navigation:** Clicking `[1]` or `[2]` inside the text smoothly scrolls to the corresponding card in the carousel and adds an animated pulse ring.
+* **Clutter-Free Text:** Strips clumsy internal reference tokens (`[[WEB_REF_1]]`) and document tags (`[Doc: ...]`, `([Doc: ...])`), keeping sentences clean and professional.
+* **Anti-Spam Guard:** E-commerce marketplace links (AliExpress, Temu, Alibaba) and stock ticker aggregators (MarketWatch, SeekingAlpha) are strictly blocked from general research citations.
+* **Rich Source Cards:** Cards display Google S2 64px domain favicons, platform badges (`YouTube`, `Kick`, `GitHub`, `Wikipedia`, `r/subreddit`), 2-line title clamps, and a click-through URL.
 * **All Sources Modal:** Users can click `All Evaluated Sources` to inspect every link considered during the research phase.
 
 ---
 
-### 5. Context-Aware Verification Search & Entity Planning
-When asked to *"verify his claims on internet"*, *"fact-check this resume on google"*, or *"audit this project"*:
-* **No Generic Searches:** Traditional bots search the literal query *"verify his claims on internet"* and get irrelevant HR tips.
-* **Entity Extraction:** DocMind extracts proper nouns, company names, GitHub handles, project titles, and URLs from the document context.
-* **Automated Investigation Plan:** Executes multi-query DuckDuckGo searches (e.g. `'Siddhant Saxena' 'Jaypee Institute'`, `'siddhantsaxena45' github`) and live-scrapes the candidate's GitHub repositories and live websites to verify matching claims.
-
----
-
-### 6. Hybrid Search Pipeline (Vector + BM25 + Reciprocal Rank Fusion)
+### 6. Hybrid Search Pipeline (Dense Vector + BM25 Lexical + Reciprocal Rank Fusion)
 * **Dense Vector Search:** 768-dimensional semantic embeddings generated via Google `text-embedding-004` stored in Pinecone Serverless.
 * **Sparse Lexical Search:** BM25 full-text search in Supabase PostgreSQL to guarantee exact keyword matches on acronyms, function names, and proper nouns.
 * **Reciprocal Rank Fusion (RRF $k=60$):**
@@ -133,22 +153,22 @@ When asked to *"verify his claims on internet"*, *"fact-check this resume on goo
 
 ---
 
-### 7. Interactive Chat Workflow (Edit Messages, Try Again, Follow-ups)
+### 7. Interactive Chat Workflows (Edit Prompts, Try Again, Follow-ups, Public Sharing)
 * **Edit Previous User Message:** Hover over any past prompt, edit the text, and submit to branch the conversation without losing context.
 * **Try Again / Regenerate:** Regenerates the assistant's response with fresh retrieval or model variation with one click.
 * **Interactive Follow-up Pills:** Dynamically generates 3–4 contextually relevant follow-up questions formatted with curved reply arrows (`↳ Elaborate`, `↳ Compare with...`) that submit on click.
-* **Public Conversation Sharing:** Generate encrypted snapshot links (`/share/:token`) to share research outputs with non-authenticated users.
+* **Public Conversation Sharing:** Generate encrypted snapshot links (`/share/:token`) to share research outputs with non-authenticated users with instant revocation capability.
 
 ---
 
-### 8. Multi-Key API Key Rotation (100% Free Tier Resilient)
+### 8. Multi-Key API Key Rotation (100% Free-Tier Resilient)
 * **Thread-Safe Round-Robin:** Supports `GOOGLE_API_KEY1` through `GOOGLE_API_KEY20`. Every request shifts to the next key in the pool.
 * **Automated 429 Recovery:** If a key encounters rate limits (`RESOURCE_EXHAUSTED` / `429`), DocMind catches the exception and immediately retries the next key in the pool with zero user-facing downtime.
 * **Model Auto-Switching:** Automatically falls back across modern Gemini models (`gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-3.6-flash`) if a specific model version is unavailable.
 
 ---
 
-### 9. Per-Chat Isolated Knowledge Bases & RLS Shield
+### 9. Per-Chat Isolated Knowledge Bases & Supabase RLS Shield
 * **Zero Cross-Chat Bleed:** Files uploaded to Chat A belong exclusively to Chat A. Chat B cannot see, retrieve, or cite them.
 * **Interactive Attachment Chips:** Real-time scoped file chips allow attaching or removing (`✕`) documents on the fly.
 * **Supabase Row-Level Security (RLS):** All database tables (`users`, `documents`, `conversations`, `messages`, `shared_conversations`) are shielded with strict RLS policies.
@@ -163,9 +183,10 @@ When asked to *"verify his claims on internet"*, *"fact-check this resume on goo
                            │
                            ▼
      [ Universal Document Parser (document_service.py) ]
-     ├─ Extracts text page-by-page
+     ├─ Extracts text page-by-page (PyPDF, python-docx, openpyxl)
      ├─ Extracts PDF /Annots /URI hyperlinks
      ├─ Extracts Word rels (document.xml.rels)
+     ├─ Normalizes font-switching whitespace
      ├─ Inlines [Page X Embedded Links: ...] into text
      └─ Gemini Multimodal Vision OCR (for images)
                            │
@@ -189,11 +210,12 @@ When asked to *"verify his claims on internet"*, *"fact-check this resume on goo
      └─ Reciprocal Rank Fusion Merging
                            │
                            ▼
-     [ Multi-Domain Parallel Web Research Engine ]
-     ├─ Multi-angle query formulation (current year aware)
-     ├─ DuckDuckGo search across multiple queries
-     ├─ Selects candidate URLs across DISTINCT domains
-     ├─ Wikipedia REST API structured lookup
+     [ Multi-Engine Fast Search & Platform Discovery ]
+     ├─ Query intent planning (Kick, Twitch, GitHub, Reddit, YT, Web)
+     ├─ DDGS search (backend="bing,brave,duckduckgo" — Mojeek bypassed)
+     ├─ Direct Bing HTML Web Search fallback
+     ├─ Google News RSS Search fallback
+     ├─ DuckDuckGo Lite HTML fallback
      └─ Parallel ThreadPool scraper (articles, headings, tables)
                            │
                            ▼
@@ -201,6 +223,7 @@ When asked to *"verify his claims on internet"*, *"fact-check this resume on goo
      ├─ 20-Key Round-Robin Rotator with 429 self-healing
      ├─ Executive Summary upfront
      ├─ Multi-source cross-synthesis with GFM comparison tables
+     ├─ Clean multi-line table cells (no <br> tags)
      ├─ Numbered citation badges [1], [2] matching sources
      └─ Key takeaway callout
                            │
@@ -224,17 +247,19 @@ When asked to *"verify his claims on internet"*, *"fact-check this resume on goo
 
 | Layer | Technology | Details |
 | :--- | :--- | :--- |
-| **Frontend Framework** | **React 19 + Vite** | Fast Single Page Application with optimized bundle splitting |
-| **Styling & Design** | **Tailwind CSS + Vanilla CSS** | Curated dark mode, glassmorphism, responsive drawers & carousels |
+| **Frontend Framework** | **React 19 + Vite 7** | Fast Single Page Application with optimized bundle splitting |
+| **Styling & Design** | **Tailwind CSS v4 + Vanilla CSS** | Curated dark mode, glassmorphism, responsive drawers & carousels |
 | **Icons & Typography** | **Lucide React + Outfit/Inter** | Modern UI iconography and clean typography |
 | **Streaming Protocol** | **Server-Sent Events (`EventSource`)** | Ultra-low latency token streaming with dedicated event channels |
 | **Backend Framework** | **FastAPI (Python 3.11+)** | High-performance asynchronous REST & SSE streaming server |
 | **AI Models** | **Google Gemini 3.8 Flash** | Fast reasoning, multimodal vision OCR, and search query planning |
+| **Fast Auxiliary Model** | **Google Gemini 3.5 Flash-Lite** | Low-latency follow-up questions, topic distillation, title generation |
 | **Embeddings** | **Google text-embedding-004** | 768-dimensional semantic embeddings |
 | **Vector Database** | **Pinecone Serverless** | Cosine metric similarity search with user-isolated namespaces |
 | **Primary Database** | **Supabase (PostgreSQL 15)** | Relational storage with strict Row-Level Security (RLS) |
 | **Document Parsers** | **PyPDF, python-docx, openpyxl** | Parsing PDF annotations, Word XML rels, and Excel cells |
-| **Web Search** | **DuckDuckGo API (`ddgs`) + httpx** | 100% free search engine with HTML fallback and redirect decoder |
+| **Web Search Cascade** | **`ddgs`, Bing HTML, Google News RSS, DDG Lite** | Multi-engine search cascade eliminating cloud datacenter timeouts |
+| **Platform APIs** | **Kick, Twitch, GitHub, Reddit, YouTube, Wikipedia** | Real-time social profile, repository, and community data |
 | **Parallel Scraper** | **ThreadPoolExecutor + httpx + lxml** | Scrapes articles, headings, and data tables across distinct domains |
 | **Favicon Engine** | **Google S2 Favicon CDN** | Dynamic 64px website favicons for all verified domains |
 | **Auth & Security** | **JWT (python-jose) + Passlib** | Stateless token auth with PBKDF2 password hashing |
@@ -262,24 +287,35 @@ DocMind/
 │   │   │   ├── llm_service.py       # Gemini 3.8 Flash, query planning, followup questions
 │   │   │   ├── rag_service.py       # Hybrid retrieval (RRF) & citation grounding
 │   │   │   ├── vector_service.py    # Pinecone vector index manager
-│   │   │   └── web_search_service.py# DuckDuckGo search & parallel multi-domain scraper
+│   │   │   └── web_search_service.py# Multi-engine search cascade & platform scrapers
 │   │   └── main.py                  # FastAPI application entrypoint & CORS middleware
 │   ├── requirements.txt             # Python dependencies
-│   └── run.py                       # Local uvicorn development launcher
+│   ├── run.py                       # Local uvicorn development launcher
+│   └── tests/
+│       ├── test_full_rag_pipeline.py# End-to-end RAG, auth, document parsing tests
+│       └── test_rag_chatbot.py      # Chatbot flow and retrieval tests
 ├── frontend/
 │   ├── src/
-│   │   ├── components/              # Sidebar, LoginView, ShareModal, SharedChatView
+│   │   ├── components/
+│   │   │   ├── LoginView.jsx        # Authentication modal with tabbed signup/login
+│   │   │   ├── ShareModal.jsx       # Public conversation link sharing modal
+│   │   │   ├── SharedChatView.jsx   # Read-only public shared chat viewer
+│   │   │   ├── Sidebar.jsx          # Conversation drawer, search bar, new chat button
+│   │   │   └── UploadModal.jsx      # Multi-file drag-and-drop document uploader
 │   │   ├── features/Chat/
-│   │   │   ├── ChatView.jsx         # Main chat interface with action bar & SSE receiver
+│   │   │   ├── AllSourcesModal.jsx  # Detailed drawer of all evaluated web/doc links
+│   │   │   ├── ChatView.jsx         # Main chat interface, action bar & SSE receiver
+│   │   │   ├── FollowupQuestions.jsx# Contextual interactive follow-up question pills
+│   │   │   ├── MarkdownTableRenderer.jsx # GFM tables, multi-line cells, citation badges
 │   │   │   ├── ResearchStatusBar.jsx# Collapsible research bar with stacked favicons
-│   │   │   ├── SourceCardsCarousel.jsx # Perplexity-style horizontal source cards
-│   │   │   ├── MarkdownTableRenderer.jsx # Custom GFM table & code block renderer
-│   │   │   ├── FollowupQuestions.jsx# Interactive follow-up question pills
-│   │   │   └── AllSourcesModal.jsx  # Full source details drawer
-│   │   ├── services/                # API client & SSE stream connection
-│   │   ├── App.jsx                  # Root state & authenticated view routing
-│   │   └── main.jsx                 # React root mounting
-│   ├── package.json                 # Frontend dependencies
+│   │   │   └── SourceCardsCarousel.jsx # Perplexity-style horizontal source cards
+│   │   ├── services/
+│   │   │   ├── api.js               # Centralized Axios client & document management
+│   │   │   └── auth.js              # Token persistence and authentication helpers
+│   │   ├── App.jsx                  # Root layout, navigation, and authenticated routing
+│   │   ├── index.css                # Tailwind CSS v4 design tokens and glassmorphism
+│   │   └── main.jsx                 # React DOM mount entrypoint
+│   ├── package.json                 # Frontend dependencies (React 19, Tailwind v4, Vite 7)
 │   └── vite.config.js               # Vite build configuration
 ├── vercel.json                      # Vercel SPA routing rewrites
 └── README.md                        # Documentation
@@ -315,7 +351,7 @@ DATABASE_URL="postgresql://postgres:your_password@db.your_project.supabase.co:54
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_INDEX_NAME="chatbot"
 
-# Google Gemini API Keys (Supports up to 20 keys for automated rotation)
+# Google Gemini API Keys (Supports up to 20 keys for automated round-robin rotation)
 GOOGLE_API_KEY1="AIzaSyYourFirstKey"
 GOOGLE_API_KEY2="AIzaSyYourSecondKey"
 GOOGLE_API_KEY3="AIzaSyYourThirdKey"
@@ -426,6 +462,42 @@ GET /api/conversations/123/messages/stream?text=rate+his+resume&token=<JWT_TOKEN
 | `event: related` | `["Question 1", "Question 2", "Question 3"]` | Context-aware interactive follow-up question pills |
 | `event: done` | `{"message_id": "..."}` | Signals completion of message generation |
 | `event: error` | `{"error": "..."}` | Broadcasts actionable error details if an exception occurs |
+
+---
+
+### Core REST Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/signup` | Registers a new user account |
+| `POST` | `/api/auth/login` | Authenticates credentials and issues JWT token |
+| `GET` | `/api/auth/me` | Fetches current user profile |
+| `POST` | `/api/documents/upload` | Uploads documents, extracts hyperlinks, indexes in Pinecone + Postgres |
+| `GET` | `/api/documents` | Lists all documents belonging to the authenticated user |
+| `DELETE` | `/api/documents/{id}` | Deletes document chunks from vector index and relational database |
+| `POST` | `/api/conversations` | Creates a new conversation thread |
+| `GET` | `/api/conversations` | Fetches all conversations for the user |
+| `GET` | `/api/conversations/{id}/messages` | Retrieves message history for a conversation |
+| `POST` | `/api/share/{id}` | Generates a public snapshot share link (`/share/:token`) |
+| `GET` | `/api/share/token/{token}` | Fetches read-only public conversation snapshot |
+| `DELETE` | `/api/share/{id}` | Revokes a public share link |
+| `GET` | `/health` | Healthcheck verification endpoint |
+
+---
+
+## 🧪 Testing & Quality Assurance
+
+DocMind includes a test suite covering the full RAG pipeline, authentication, document chunking, and multi-format parsing:
+
+```bash
+cd backend
+pytest -v
+```
+
+**Test Coverage Highlights:**
+- **`test_document_parser_multi_format`**: Validates text extraction and recursive chunking across documents.
+- **`test_web_search_service`**: Verifies multi-engine web search queries, link formatting, and metadata extraction.
+- **`test_end_to_end_rag_and_sharing_workflow`**: Tests complete end-to-end user registration, file upload, chat synthesis, and public sharing.
 
 ---
 
