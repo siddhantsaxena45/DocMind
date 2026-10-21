@@ -11,6 +11,8 @@ from app.core.database import get_db_conn
 from app.api.models import Citation
 
 KNOWN_PLATFORMS = {
+    "kick.com": "Kick",
+    "twitch.tv": "Twitch",
     "github.com": "GitHub",
     "gitlab.com": "GitLab",
     "bitbucket.org": "Bitbucket",
@@ -28,6 +30,12 @@ KNOWN_PLATFORMS = {
     "youtu.be": "YouTube",
     "twitter.com": "X (Twitter)",
     "x.com": "X (Twitter)",
+    "instagram.com": "Instagram",
+    "facebook.com": "Facebook",
+    "threads.net": "Threads",
+    "tiktok.com": "TikTok",
+    "discord.com": "Discord",
+    "discord.gg": "Discord",
     "medium.com": "Medium",
     "substack.com": "Substack",
     "stackoverflow.com": "Stack Overflow",
@@ -109,6 +117,20 @@ def format_url_title(url: str, site_name: str = "") -> str:
                     elif path_parts and path_parts[0].startswith("@"):
                         return f"YouTube: {path_parts[0]}"
                     return "YouTube Channel"
+
+                elif k_dom == "kick.com":
+                    if path_parts:
+                        clean_ch = unquote(path_parts[0])
+                        if len(path_parts) >= 2 and path_parts[1].lower() == "videos":
+                            return f"Kick: {clean_ch} VODs"
+                        return f"Kick: {clean_ch}"
+                    return "Kick Live Stream"
+
+                elif k_dom == "twitch.tv":
+                    if path_parts:
+                        clean_ch = unquote(path_parts[0])
+                        return f"Twitch: {clean_ch}"
+                    return "Twitch Channel"
 
                 elif k_dom == "huggingface.co":
                     if len(path_parts) >= 2:
@@ -448,7 +470,33 @@ class RAGService:
                     except Exception:
                         return ""
 
-                # 1. User or document explicit links first
+                # Deep Snippet Link Extraction: Extract direct platform & profile links from search snippets
+                # (e.g. YouTube video snippet mentions "KICK: https://kick.com/hithuman" or "GitHub: https://github.com/...")
+                discovered_snippet_urls: List[str] = []
+                for w in web_results:
+                    s_text = f"{w.get('title', '')} {w.get('snippet', '')}"
+                    for u in extract_urls_from_text(s_text):
+                        clean_u = u.strip().rstrip("/")
+                        if not clean_u.startswith("http"):
+                            continue
+                        if any(spam in clean_u.lower() for spam in SPAM_MARKETPLACE_DOMAINS):
+                            continue
+                        u_lower = clean_u.lower()
+                        if any(plat in u_lower for plat in ["kick.com", "twitch.tv", "github.com", "twitter.com", "x.com", "linkedin.com", "instagram.com"]):
+                            if clean_u.lower() not in [x.lower() for x in discovered_snippet_urls]:
+                                discovered_snippet_urls.append(clean_u)
+
+                # 1. Proactively prioritize discovered platform links (e.g. kick.com/hithuman)
+                for su in discovered_snippet_urls:
+                    if su not in scrape_candidates:
+                        d = _get_clean_domain(su)
+                        if d:
+                            seen_domains.add(d)
+                        scrape_candidates.append(su)
+                        if len(scrape_candidates) >= 3:
+                            break
+
+                # 2. User or document explicit links
                 for u in extracted_doc_links:
                     if u and not u.startswith("mailto:"):
                         d = _get_clean_domain(u)
@@ -458,7 +506,7 @@ class RAGService:
                         if len(scrape_candidates) >= 5:
                             break
 
-                # 2. Add top web results across distinct domains (Wikipedia, News, Docs, Tech Sites, Blogs)
+                # 3. Add top web results across distinct domains (Wikipedia, News, Docs, Tech Sites, Blogs)
                 for w in web_results:
                     wu = w.get("url", "")
                     if not wu or wu.startswith("mailto:"):
@@ -472,7 +520,7 @@ class RAGService:
                         if len(scrape_candidates) >= 5:
                             break
 
-                # 3. If fewer than 4 candidates, allow clean secondary results from the same domains
+                # 4. If fewer than 4 candidates, allow clean secondary results from the same domains
                 if len(scrape_candidates) < 4:
                     for w in web_results:
                         wu = w.get("url", "")
@@ -483,7 +531,7 @@ class RAGService:
                                 if len(scrape_candidates) >= 4:
                                     break
 
-                # 4. Live parallel scraping across distinct sources (~1 sec)
+                # 5. Live parallel scraping across distinct sources (~1 sec)
                 if scrape_candidates:
                     live_fetched_sources = web_search_service.fetch_multiple_urls(scrape_candidates, max_urls=5)
 
@@ -537,7 +585,26 @@ class RAGService:
                     )
                 )
 
-        # 4b. Add additional search results from DuckDuckGo
+        # 4b. Add discovered snippet URLs (e.g. direct Kick profile https://kick.com/hithuman)
+        if enable_web_search and 'discovered_snippet_urls' in locals():
+            for d_url in discovered_snippet_urls:
+                d_clean = d_url.strip().rstrip("/")
+                if d_clean and d_clean.lower() not in seen_urls:
+                    seen_urls.add(d_clean.lower())
+                    site_name, favicon = extract_site_metadata(d_clean)
+                    card_title = format_url_title(d_clean, site_name)
+                    web_citations.append(
+                        Citation(
+                            title=card_title,
+                            url=d_clean,
+                            snippet=f"Direct profile on {site_name}: {d_clean}",
+                            site_name=site_name,
+                            favicon=favicon,
+                            type="web"
+                        )
+                    )
+
+        # 4c. Add additional search results from DuckDuckGo / Bing / Kick / YouTube
         for item in web_results:
             w_url = item.get("url", "").rstrip("/")
             if w_url and w_url.lower() not in seen_urls:

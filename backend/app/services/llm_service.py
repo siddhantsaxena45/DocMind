@@ -314,19 +314,25 @@ class LLMService:
         api_keys = api_key_rotator.get_rotated_google_keys()
         if api_keys:
             prompt = (
-                f"You are a search query optimizer for a real-time research engine. The current year is {current_year}.\n"
+                f"You are an unbiased search query optimizer for a real-time research engine. The current year is {current_year}.\n"
                 f"Convert the user's prompt into 2 or 3 distinct, highly effective search queries for a search engine.\n"
                 f"{history_context}\n\n"
                 f"User Prompt: {clean_q}\n\n"
                 "CRITICAL SEARCH STRATEGY:\n"
-                "1. PRESERVE ALL ENTITIES (CREATOR & CHANNEL): If the user mentions BOTH a creator/person name (e.g., 'Siddhant Saxena') and a channel/project name (e.g., 'SidCode'), you MUST combine BOTH in the primary queries: e.g., '\"SidCode\" \"Siddhant Saxena\" youtube' and 'SidCode Siddhant Saxena youtube channel'. NEVER drop the creator's name or the channel name!\n"
-                "2. When searching for a YouTube channel, creator, or podcast, generate queries like '\"Name\" youtube channel' or '\"Name\" youtube' with quotes around distinct proper nouns.\n"
-                "3. If previous conversation turns already identified verified handles (e.g. '@sidcodeai'), channel names, URLs, or creator details, incorporate those exact handles or keywords into at least one of the queries (e.g., '\"SidCode\" \"@sidcodeai\"') to preserve search continuity for follow-up questions.\n"
+                "1. PRESERVE ALL ENTITIES (CREATOR, PROJECT, PERSON): If the user mentions a creator/person name and/or a project/channel/handle, combine and preserve ALL distinct proper nouns (e.g. '\"HitHuman\"', '\"Siddhant Saxena\"', '\"SidCode\"'). NEVER omit proper nouns.\n"
+                "2. RESPECT PLATFORM INTENT (GENERALIZE ACROSS ALL PLATFORMS):\n"
+                "   - If the user specifically asks about Kick (e.g. 'tell about HitHuman on kick'): Target Kick directly! Generate queries like '\"HitHuman\" site:kick.com', 'HitHuman kick stream', 'HitHuman kick.com'.\n"
+                "   - If the user asks about Twitch: Target Twitch (e.g. '\"Name\" site:twitch.tv', 'Name twitch stream').\n"
+                "   - If the user asks about GitHub / open-source: Target GitHub (e.g. '\"Name\" site:github.com', 'Name github repository').\n"
+                "   - If the user asks about YouTube: Target YouTube (e.g. '\"Name\" site:youtube.com', '\"Name\" youtube channel').\n"
+                "   - If the user asks about Reddit: Target Reddit (e.g. '\"Name\" site:reddit.com').\n"
+                "   - If NO specific platform is requested, DO NOT force site:youtube.com or any single platform! Generate balanced web queries across official profiles, encyclopedic sources, news, and authoritative websites.\n"
+                "3. PREVIOUS CONVERSATION CONTINUITY: If previous conversation turns identified verified handles (e.g. '@hithuman', '@sidcodeai'), URLs, or specific aliases, incorporate those exact handles or keywords into at least one query.\n"
                 "4. Strip conversational command words like 'can you search', 'tell about', 'check whether it exists', 'on google'.\n"
                 "- Output ONLY a JSON object with this exact structure:\n"
                 "{\n"
                 '  "queries": ["query 1", "query 2", "query 3"],\n'
-                '  "topic": "Concise 3-5 word topic for UI badge"\n'
+                '  "topic": "Concise 3-5 word topic for UI badge (e.g. HitHuman Kick Streamer, React 19 Updates)"\n'
                 "}\n"
             )
             for key in api_keys[:2]:
@@ -353,17 +359,48 @@ class LLMService:
             'google', 'whether', 'exists', 'exist', 'not', 'or', 'about', 'by'
         }
         words = [w for w in re.findall(r'[a-zA-Z0-9\.\-]+', clean_q) if w.lower() not in filler_words and len(w) > 1]
-        entity_words = [
-            w for w in words
-            if w.lower() not in ['youtube', 'channel', 'video', 'videos', 'creator', 'podcast', 'yt']
-        ]
+        
+        q_lower = clean_q.lower()
+        has_kick_intent = any(x in q_lower for x in ["kick", "kick.com"])
+        has_twitch_intent = any(x in q_lower for x in ["twitch", "twitch.tv"])
+        has_github_intent = any(x in q_lower for x in ["github", "github.com", "repo", "repository"])
+        has_yt_intent = any(x in q_lower for x in ["yt", "youtube", "youtuber"])
+        has_reddit_intent = any(x in q_lower for x in ["reddit", "subreddit", "r/"])
+
+        platform_terms = {'youtube', 'channel', 'video', 'videos', 'creator', 'podcast', 'yt', 'kick', 'twitch', 'github', 'repo', 'stream', 'streamer', 'reddit'}
+        entity_words = [w for w in words if w.lower() not in platform_terms]
         target_name = " ".join(entity_words) if entity_words else (" ".join(words[:4]) if words else clean_q)
         raw_keywords = " ".join(words[:6]) if words else clean_q
 
-        combined_text = (clean_q + " " + history_context).lower()
-        has_yt_intent = any(x in combined_text for x in ["yt", "youtube", "channel", "video", "creator", "podcast"])
-
-        if has_yt_intent:
+        if has_kick_intent:
+            queries = [
+                f"{target_name} kick streamer",
+                f'"{target_name}" site:kick.com',
+                f"{target_name} kick"
+            ]
+            topic = f"{target_name} Kick Streamer"[:35]
+        elif has_twitch_intent:
+            queries = [
+                f"{target_name} twitch stream",
+                f'"{target_name}" site:twitch.tv',
+                f"{target_name} twitch"
+            ]
+            topic = f"{target_name} Twitch"[:35]
+        elif has_github_intent:
+            queries = [
+                f"{target_name} github repository",
+                f'"{target_name}" site:github.com',
+                f"{target_name} github"
+            ]
+            topic = f"{target_name} GitHub"[:35]
+        elif has_reddit_intent:
+            queries = [
+                f"{target_name} site:reddit.com",
+                f"{target_name} reddit discussion",
+                raw_keywords
+            ]
+            topic = f"{target_name} Reddit"[:35]
+        elif has_yt_intent:
             queries = [
                 f"{target_name} youtube",
                 f'"{target_name}" youtube channel',

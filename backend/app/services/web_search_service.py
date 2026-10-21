@@ -82,6 +82,42 @@ def extract_site_metadata(url: str) -> tuple[str, str]:
             favicon = "https://www.google.com/s2/favicons?domain=youtube.com&sz=64"
             return site_name, favicon
 
+        # Kick detection
+        if "kick.com" in domain:
+            site_name = "Kick"
+            favicon = "https://www.google.com/s2/favicons?domain=kick.com&sz=64"
+            return site_name, favicon
+
+        # Twitch detection
+        if "twitch.tv" in domain:
+            site_name = "Twitch"
+            favicon = "https://www.google.com/s2/favicons?domain=twitch.tv&sz=64"
+            return site_name, favicon
+
+        # GitHub detection
+        if "github.com" in domain:
+            site_name = "GitHub"
+            favicon = "https://www.google.com/s2/favicons?domain=github.com&sz=64"
+            return site_name, favicon
+
+        # Wikipedia detection
+        if "wikipedia.org" in domain:
+            site_name = "Wikipedia"
+            favicon = "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64"
+            return site_name, favicon
+
+        # Twitter / X detection
+        if "twitter.com" in domain or "x.com" in domain:
+            site_name = "X (Twitter)"
+            favicon = "https://www.google.com/s2/favicons?domain=x.com&sz=64"
+            return site_name, favicon
+
+        # LinkedIn detection
+        if "linkedin.com" in domain:
+            site_name = "LinkedIn"
+            favicon = "https://www.google.com/s2/favicons?domain=linkedin.com&sz=64"
+            return site_name, favicon
+
         # Subreddit detection
         if "reddit.com" in domain:
             match = re.search(r"/r/([a-zA-Z0-9_]+)", parsed.path)
@@ -229,10 +265,46 @@ class WebSearchService:
         """
         Executes web searches across multiple targeted queries and merges results,
         deduplicating by URL to provide diverse, rich verification sources.
+        Generalizes across Kick, Twitch, GitHub, Reddit, Wikipedia, YouTube, and the open web.
         """
         merged_results: List[Dict[str, Any]] = []
         seen_urls = set()
 
+        combined_q = (" ".join(queries)).lower()
+        has_kick = any(k in combined_q for k in ["kick", "kick.com"])
+        has_github = any(g in combined_q for g in ["github", "github.com", "repo", "repository"])
+        has_reddit = any(r in combined_q for r in ["reddit", "subreddit", "r/"])
+        has_yt = any(y in combined_q for y in ["youtube", "youtuber", "youtu.be"])
+
+        # 1. Proactively query specialized platforms when targeted intent is detected
+        if has_kick:
+            clean_target = re.sub(r'[\'"]', '', queries[0]).replace("site:kick.com", "").replace("kick", "").replace("streamer", "").replace("stream", "").strip()
+            kick_hits = self.search_kick(clean_target or queries[0], max_results=3)
+            for item in kick_hits:
+                url = item.get("url", "").rstrip("/")
+                if url and url.lower() not in seen_urls:
+                    seen_urls.add(url.lower())
+                    merged_results.append(item)
+
+        if has_github:
+            clean_target = re.sub(r'[\'"]', '', queries[0]).replace("site:github.com", "").replace("github", "").replace("repo", "").strip()
+            gh_hits = self.search_github(clean_target or queries[0], max_results=3)
+            for item in gh_hits:
+                url = item.get("url", "").rstrip("/")
+                if url and url.lower() not in seen_urls:
+                    seen_urls.add(url.lower())
+                    merged_results.append(item)
+
+        if has_reddit:
+            clean_target = re.sub(r'[\'"]', '', queries[0]).replace("site:reddit.com", "").replace("reddit", "").strip()
+            rd_hits = self.search_reddit(clean_target or queries[0], max_results=3)
+            for item in rd_hits:
+                url = item.get("url", "").rstrip("/")
+                if url and url.lower() not in seen_urls:
+                    seen_urls.add(url.lower())
+                    merged_results.append(item)
+
+        # 2. Standard Web Search across queries (DuckDuckGo primary)
         for idx, q in enumerate(queries):
             if not q.strip():
                 continue
@@ -250,10 +322,26 @@ class WebSearchService:
             if not sub_results and not merged_results and idx >= 1:
                 break
 
-        # YouTube direct search fallback if DuckDuckGo failed, was blocked, or returned 0 relevant hits
+        # 3. Fallback cascade if search engines timed out / returned 0 hits
         if not merged_results and queries:
-            combined_q = " ".join(queries).lower()
-            if any(term in combined_q for term in ["youtube", "channel", "video", "creator", "podcast", "insaan", "sidcode"]):
+            # A. Try Bing HTML general web search first
+            bing_hits = self.search_bing_html(queries[0], max_results=max_results)
+            for item in bing_hits:
+                url = item.get("url", "").rstrip("/")
+                if url and url.lower() not in seen_urls:
+                    seen_urls.add(url.lower())
+                    merged_results.append(item)
+
+        # 4. Secondary fallback: Platform-specific direct searches
+        if len(merged_results) < 2 and queries:
+            if has_kick:
+                kick_hits = self.search_kick(queries[0], max_results=3)
+                for item in kick_hits:
+                    url = item.get("url", "").rstrip("/")
+                    if url and url.lower() not in seen_urls:
+                        seen_urls.add(url.lower())
+                        merged_results.append(item)
+            elif has_yt:
                 clean_target = re.sub(r'[\'"]', '', queries[0]).replace("youtube", "").replace("channel", "").strip()
                 yt_results = self.search_youtube(clean_target or queries[0], max_results=max_results)
                 for item in yt_results:
@@ -261,8 +349,245 @@ class WebSearchService:
                     if url and url.lower() not in seen_urls:
                         seen_urls.add(url.lower())
                         merged_results.append(item)
+            else:
+                wiki_hits = self.search_wikipedia(queries[0], max_results=2)
+                for item in wiki_hits:
+                    url = item.get("url", "").rstrip("/")
+                    if url and url.lower() not in seen_urls:
+                        seen_urls.add(url.lower())
+                        merged_results.append(item)
 
         return merged_results
+
+    def search_kick(self, query: str, max_results: int = 3) -> List[Dict[str, Any]]:
+        """
+        Directly checks Kick channel profiles to bypass search engine rate limits.
+        Extracts verified Kick streamer metadata, follower count, and bio.
+        """
+        results = []
+        clean_q = re.sub(r'[\'"]', '', query).lower()
+        clean_q = re.sub(r'\bsite:kick\.com\b', '', clean_q)
+        for term in ["kick", "streamer", "stream", "creator", "live", "indian", "official", "watch"]:
+            clean_q = re.sub(rf'\b{term}\b', '', clean_q)
+        clean_q = clean_q.strip()
+        tokens = [t for t in re.split(r'[\s_]+', clean_q) if t]
+        candidate_slugs = []
+        if tokens:
+            candidate_slugs.append("".join(tokens))
+            if len(tokens) > 1:
+                candidate_slugs.append(tokens[0])
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/html, */*",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+
+        for slug in candidate_slugs[:2]:
+            slug = slug.strip("/").lower()
+            if not slug or len(slug) < 3 or slug in ["search", "categories", "video", "clips"]:
+                continue
+            channel_url = f"https://kick.com/{slug}"
+            try:
+                api_url = f"https://kick.com/api/v2/channels/{slug}"
+                with httpx.Client(timeout=3.5, follow_redirects=True, headers=headers) as client:
+                    resp = client.get(api_url)
+                    if resp.status_code == 200:
+                        try:
+                            data = resp.json()
+                            u_data = data.get("user", {})
+                            bio = u_data.get("bio", "") or data.get("chatroom", {}).get("description", "")
+                            followers = data.get("followers_count") or data.get("followersCount") or ""
+                            livestream = data.get("livestream")
+                            live_str = " (Currently LIVE)" if livestream else ""
+                            f_str = f" | {followers:,} followers" if isinstance(followers, int) and followers > 0 else ""
+                            
+                            results.append({
+                                "title": f"{slug.title()} - Kick Live Stream",
+                                "url": channel_url,
+                                "snippet": f"Official Kick Channel: {slug}. Verified Kick Creator{live_str}{f_str}. Bio: {bio}".strip(),
+                                "site_name": "Kick",
+                                "favicon": "https://www.google.com/s2/favicons?domain=kick.com&sz=64",
+                                "type": "web"
+                            })
+                            if len(results) >= max_results:
+                                return results
+                        except Exception:
+                            pass
+
+                    # HTML fallback
+                    page_resp = client.get(channel_url)
+                    if page_resp.status_code == 200 and "kick" in page_resp.text.lower():
+                        from lxml import html
+                        tree = html.fromstring(page_resp.text)
+                        title_el = tree.xpath('//title')
+                        t_text = title_el[0].text_content().strip() if title_el else f"{slug.title()} on Kick"
+                        desc_match = re.search(r'<meta\s+(?:name|property)=["\'](?:description|og:description)["\']\s+content=["\'](.*?)["\']', page_resp.text, re.IGNORECASE)
+                        desc_text = desc_match.group(1).strip() if desc_match else f"Watch {slug} live stream on Kick."
+                        
+                        results.append({
+                            "title": t_text[:90],
+                            "url": channel_url,
+                            "snippet": f"Official Kick Channel for {slug}: {desc_text}".strip(),
+                            "site_name": "Kick",
+                            "favicon": "https://www.google.com/s2/favicons?domain=kick.com&sz=64",
+                            "type": "web"
+                        })
+                        if len(results) >= max_results:
+                            return results
+            except Exception as e:
+                logger.debug(f"Direct Kick channel check for {slug} error: {e}")
+
+        return results
+
+    def search_bing_html(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Lightweight Bing HTML search fallback for general web results across all domains
+        when DuckDuckGo is blocked or times out on cloud datacenter IPs.
+        """
+        clean_q = re.sub(r'[\'"]', '', query).strip()
+        encoded = urllib.parse.quote_plus(clean_q)
+        url = f"https://www.bing.com/search?q={encoded}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        results = []
+        try:
+            with httpx.Client(timeout=4.0, follow_redirects=True, headers=headers) as client:
+                resp = client.get(url)
+                if resp.status_code == 200:
+                    from lxml import html
+                    tree = html.fromstring(resp.text)
+                    items = tree.xpath('//li[contains(@class, "b_algo")]')
+                    for item in items:
+                        t_nodes = item.xpath('.//h2/a')
+                        if not t_nodes:
+                            continue
+                        t_text = t_nodes[0].text_content().strip()
+                        href = t_nodes[0].get("href", "")
+                        if not href or not href.startswith("http") or "bing.com" in href:
+                            continue
+                        
+                        p_nodes = item.xpath('.//div[contains(@class, "b_caption")]//p | .//p')
+                        snippet = p_nodes[0].text_content().strip() if p_nodes else ""
+                        
+                        if not is_result_relevant(t_text, snippet, href, query):
+                            continue
+                        
+                        site_name, favicon = extract_site_metadata(href)
+                        results.append({
+                            "title": t_text[:110],
+                            "url": href,
+                            "snippet": snippet[:500],
+                            "site_name": site_name,
+                            "favicon": favicon,
+                            "type": "web"
+                        })
+                        if len(results) >= max_results:
+                            break
+        except Exception as e:
+            logger.debug(f"Bing HTML fallback search error: {e}")
+        return results
+
+    def search_wikipedia(self, query: str, max_results: int = 3) -> List[Dict[str, Any]]:
+        """
+        Direct Wikipedia OpenSearch API retrieval for authoritative encyclopedic topics.
+        """
+        clean_q = re.sub(r'[\'"]', '', query).strip()
+        encoded = urllib.parse.quote_plus(clean_q)
+        url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={encoded}&limit={max_results}&namespace=0&format=json"
+        results = []
+        try:
+            with httpx.Client(timeout=3.5, follow_redirects=True) as client:
+                resp = client.get(url, headers={"User-Agent": "DocMindResearch/1.0"})
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if len(data) >= 4:
+                        titles, descriptions, urls = data[1], data[2], data[3]
+                        for t, d, u in zip(titles, descriptions, urls):
+                            if u and t:
+                                results.append({
+                                    "title": f"{t} - Wikipedia",
+                                    "url": u,
+                                    "snippet": d[:500] if d else f"Wikipedia article for {t}.",
+                                    "site_name": "Wikipedia",
+                                    "favicon": "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64",
+                                    "type": "web"
+                                })
+        except Exception as e:
+            logger.debug(f"Wikipedia OpenSearch API error: {e}")
+        return results
+
+    def search_github(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
+        """
+        Direct GitHub public search API for repositories and developers.
+        """
+        clean_q = re.sub(r'[\'"]', '', query).replace("site:github.com", "").replace("github", "").replace("repo", "").strip()
+        encoded = urllib.parse.quote_plus(clean_q)
+        url = f"https://api.github.com/search/repositories?q={encoded}&per_page={max_results}"
+        headers = {
+            "User-Agent": "DocMindResearch/1.0",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        results = []
+        try:
+            with httpx.Client(timeout=4.0, follow_redirects=True, headers=headers) as client:
+                resp = client.get(url)
+                if resp.status_code == 200:
+                    items = resp.json().get("items", [])
+                    for repo in items:
+                        name = repo.get("full_name", "")
+                        desc = repo.get("description", "") or "GitHub Repository"
+                        stars = repo.get("stargazers_count", 0)
+                        lang = repo.get("language") or ""
+                        html_url = repo.get("html_url", "")
+                        meta_info = f" ({stars} stars, {lang})" if lang else f" ({stars} stars)"
+                        results.append({
+                            "title": f"{name} - GitHub",
+                            "url": html_url,
+                            "snippet": f"GitHub Repository: {name}{meta_info}. {desc}".strip(),
+                            "site_name": "GitHub",
+                            "favicon": "https://www.google.com/s2/favicons?domain=github.com&sz=64",
+                            "type": "web"
+                        })
+        except Exception as e:
+            logger.debug(f"GitHub Search API error: {e}")
+        return results
+
+    def search_reddit(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
+        """
+        Direct Reddit search API for community discussions, opinions, and reviews.
+        """
+        clean_q = re.sub(r'[\'"]', '', query).replace("site:reddit.com", "").replace("reddit", "").strip()
+        encoded = urllib.parse.quote_plus(clean_q)
+        url = f"https://www.reddit.com/search.json?q={encoded}&limit={max_results}&sort=relevance"
+        headers = {"User-Agent": "DocMindResearch/1.0"}
+        results = []
+        try:
+            with httpx.Client(timeout=4.0, follow_redirects=True, headers=headers) as client:
+                resp = client.get(url)
+                if resp.status_code == 200:
+                    posts = resp.json().get("data", {}).get("children", [])
+                    for p in posts:
+                        p_data = p.get("data", {})
+                        title = p_data.get("title", "")
+                        permalink = p_data.get("permalink", "")
+                        subreddit = p_data.get("subreddit_name_prefixed", "r/reddit")
+                        selftext = p_data.get("selftext", "")[:350]
+                        if title and permalink:
+                            results.append({
+                                "title": f"{title} : {subreddit}",
+                                "url": f"https://www.reddit.com{permalink}",
+                                "snippet": f"{subreddit} discussion: {title}. {selftext}".strip(),
+                                "site_name": subreddit,
+                                "favicon": "https://www.google.com/s2/favicons?domain=reddit.com&sz=64",
+                                "type": "web"
+                            })
+        except Exception as e:
+            logger.debug(f"Reddit Search API error: {e}")
+        return results
 
     def search_youtube(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
         """
@@ -432,6 +757,19 @@ class WebSearchService:
                         "snippet": desc_text[:1500] if desc_text else "YouTube Channel / Video",
                         "site_name": site_name,
                         "favicon": favicon,
+                        "type": "web"
+                    }
+
+                # Specialized parsing for Kick
+                if "kick.com" in clean_u.lower():
+                    desc_match = re.search(r'<meta\s+(?:name|property)=["\'](?:description|og:description)["\']\s+content=["\'](.*?)["\']', html_text, re.IGNORECASE)
+                    desc_text = desc_match.group(1).strip() if desc_match else ""
+                    return {
+                        "url": clean_u,
+                        "title": title[:100],
+                        "snippet": desc_text[:1500] if desc_text else "Kick Live Stream Channel",
+                        "site_name": "Kick",
+                        "favicon": favicon or "https://www.google.com/s2/favicons?domain=kick.com&sz=64",
                         "type": "web"
                     }
 
