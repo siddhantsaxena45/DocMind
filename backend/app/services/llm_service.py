@@ -308,7 +308,7 @@ class LLMService:
                 f"{history_context}\n\n"
                 f"User Prompt: {clean_q}\n\n"
                 "CRITICAL SEARCH STRATEGY:\n"
-                "1. If the user mentions or implies searching for a YouTube channel, creator, video series, or podcast (e.g., 'yt', 'youtube', 'channel', 'creator'), you MUST generate at least one query targeted at YouTube (e.g. '\"Name\" youtube channel' or 'site:youtube.com \"Name\"').\n"
+                "1. If the user mentions or implies searching for a YouTube channel, creator, video series, or podcast (e.g., 'yt', 'youtube', 'channel', 'creator'), generate queries like '\"Name\" youtube channel' or '\"Name\" youtube' (DO NOT use 'site:youtube.com' as search engines often fail on site: with YouTube @handles).\n"
                 "2. When searching for a specific proper noun, person name, handle, or brand (e.g., 'SidCode', 'Siddhant Saxena'), put exact quotes around distinct names (e.g. '\"SidCode\" \"Siddhant Saxena\"') so the search engine does not match random generic products.\n"
                 "3. If checking whether an entity, channel, or platform exists, search for its official footprint and primary channel.\n"
                 "4. Strip conversational command words like 'can you search', 'cant u search', 'check whether it exists', 'on google', 'tell me'.\n"
@@ -348,12 +348,18 @@ class LLMService:
         combined_text = (clean_q + " " + history_context).lower()
         has_yt_intent = any(x in combined_text for x in ["yt", "youtube", "channel", "video", "creator", "podcast"])
 
-        queries = [quoted_keywords]
         if has_yt_intent:
-            queries.append(f"{raw_keywords} youtube channel")
-            queries.append(f'site:youtube.com "{words[0]}"' if words else f"{raw_keywords} youtube")
+            target_name = words[0] if words else raw_keywords
+            queries = [
+                f'"{target_name}" youtube channel',
+                f'{raw_keywords} youtube channel',
+                f'"{target_name}" youtube'
+            ]
         else:
-            queries.append(f"{raw_keywords} {current_year}" if str(current_year) not in raw_keywords else raw_keywords)
+            queries = [
+                quoted_keywords,
+                f"{raw_keywords} {current_year}" if str(current_year) not in raw_keywords else raw_keywords
+            ]
 
         return queries[:3], clean_q[:40].title()
 

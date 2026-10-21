@@ -122,25 +122,44 @@ class WebSearchService:
         data = {"q": query}
         results = []
         shopping_intent = is_shopping_query(query)
-        with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
-            resp = client.post(url, data=data, headers=headers)
-            if resp.status_code == 200:
-                from lxml import html
-                tree = html.fromstring(resp.text)
-                links = tree.xpath('//a[contains(@class, "result__url")]')
-                titles = tree.xpath('//a[contains(@class, "result__snippet")]')
-                for i in range(min(len(links), max_results + 4)):
-                    href = links[i].get("href", "")
-                    snippet = titles[i].text_content().strip() if i < len(titles) else ""
-                    if href:
-                        parsed_href = urlparse(href)
+        import urllib.parse
+        try:
+            with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+                resp = client.post(url, data=data, headers=headers)
+                if resp.status_code == 200:
+                    from lxml import html
+                    tree = html.fromstring(resp.text)
+                    result_elements = tree.xpath('//div[contains(@class, "result")]')
+                    for elem in result_elements:
+                        t_elem = elem.xpath('.//h2/a')
+                        s_elem = elem.xpath('.//a[contains(@class, "result__snippet")]')
+                        if not t_elem:
+                            continue
+                        real_title = t_elem[0].text_content().strip()
+                        raw_href = t_elem[0].get("href", "")
+                        if not raw_href or "duckduckgo.com/y.js" in raw_href:
+                            continue
+
+                        # Decode real target URL from DuckDuckGo redirect wrapper /l/?uddg=<url>
+                        if "uddg=" in raw_href:
+                            parsed_qs = urllib.parse.parse_qs(urllib.parse.urlparse(raw_href).query)
+                            real_href = parsed_qs.get("uddg", [raw_href])[0]
+                        else:
+                            real_href = raw_href
+
+                        if not real_href.startswith("http"):
+                            continue
+
+                        parsed_href = urlparse(real_href)
                         d = parsed_href.netloc.lower()
                         if any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS) and not shopping_intent:
                             continue
-                        site_name, favicon = extract_site_metadata(href)
+
+                        snippet = s_elem[0].text_content().strip() if s_elem else ""
+                        site_name, favicon = extract_site_metadata(real_href)
                         results.append({
-                            "title": href,
-                            "url": href,
+                            "title": real_title or real_href,
+                            "url": real_href,
                             "snippet": snippet[:500],
                             "site_name": site_name,
                             "favicon": favicon,
@@ -148,6 +167,9 @@ class WebSearchService:
                         })
                         if len(results) >= max_results:
                             break
+        except Exception as e:
+            logger.warning(f"HTML fallback search error: {e}")
+
         return results
 
     def search_multi(self, queries: List[str], max_results: int = 8) -> List[Dict[str, Any]]:
