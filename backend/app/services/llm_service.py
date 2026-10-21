@@ -9,6 +9,37 @@ from app.core.config import settings, api_key_rotator
 
 logger = logging.getLogger(__name__)
 
+def extract_text_from_content(content: Any) -> str:
+    """
+    Safely extracts pure text from any LangChain / Gemini content structure,
+    whether it is a string, a list of dicts [{'type': 'text', 'text': '...', 'index': 0}],
+    or complex message parts. Strips out raw dict wrappers and metadata signatures.
+    """
+    if isinstance(content, str):
+        # In rare cases where a string contains stringified dict chunks like "{'type': 'text', 'text': '...'}"
+        if ("'type': 'text'" in content or '"type": "text"' in content) and ("'text':" in content or '"text":' in content):
+            extracted = re.findall(r'[\'"]text[\'"]:\s*[\'"]((?:\\.|[^\'"])*)[\'"]', content)
+            if extracted:
+                return "".join(extracted)
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                if "text" in item and item["text"] is not None:
+                    parts.append(str(item["text"]))
+            elif hasattr(item, "text"):
+                parts.append(str(item.text))
+            elif isinstance(item, tuple) and len(item) == 2 and item[0] == "text":
+                parts.append(str(item[1]))
+        return "".join(parts)
+    if isinstance(content, dict):
+        if "text" in content and content["text"] is not None:
+            return str(content["text"])
+    return str(content) if content is not None else ""
+
 def get_system_prompt() -> str:
     now = datetime.now(timezone.utc)
     current_date_str = now.strftime("%A, %B %d, %Y")
@@ -169,10 +200,7 @@ class LLMService:
                 try:
                     llm = self._get_llm(key, streaming=False)
                     response = llm.invoke(messages)
-                    content = response.content
-                    if isinstance(content, list):
-                        content = "".join(str(part) for part in content)
-                    return str(content)
+                    return extract_text_from_content(response.content)
                 except Exception as e:
                     last_error = str(e)
                     logger.warning(f"LLM invoke attempt {attempt+1} failed with key: {last_error}")
@@ -203,11 +231,9 @@ class LLMService:
             try:
                 llm = self._get_llm(key, streaming=True)
                 async for chunk in llm.astream(messages):
-                    content = chunk.content
-                    if isinstance(content, list):
-                        content = "".join(str(p) for p in content)
-                    if content:
-                        yield str(content)
+                    chunk_text = extract_text_from_content(chunk.content)
+                    if chunk_text:
+                        yield chunk_text
                 return
             except Exception as e:
                 last_error = str(e)
@@ -238,7 +264,7 @@ class LLMService:
                 try:
                     llm = self._get_fast_llm(key, temperature=0.1)
                     res = llm.invoke([HumanMessage(content=extract_prompt)])
-                    t = res.content.strip().strip('"').strip("'")
+                    t = extract_text_from_content(res.content).strip().strip('"').strip("'")
                     if t and len(t) < 50:
                         return t
                 except Exception as e:
@@ -273,9 +299,9 @@ class LLMService:
             )
             for key in api_keys[:2]:
                 try:
-                    llm = self._get_llm(key, streaming=False, temperature=0.1)
+                    llm = self._get_fast_llm(key, temperature=0.1)
                     res = llm.invoke([HumanMessage(content=prompt)])
-                    raw = res.content if isinstance(res.content, str) else str(res.content)
+                    raw = extract_text_from_content(res.content).strip()
                     match = re.search(r'\{.*\}', raw, re.DOTALL)
                     if match:
                         data = json.loads(match.group(0))
@@ -288,10 +314,15 @@ class LLMService:
                         self._switch_to_next_model(self.current_model)
                     continue
 
-        words = [w for w in re.findall(r'\b\w+\b', clean_q) if w.lower() not in ('how', 'why', 'what', 'is', 'are', 'the', 'so', 'a', 'an', 'to')]
-        keyword_q = " ".join(words[:6])
+        filler_words = {
+            'check', 'tell', 'why', 'how', 'what', 'who', 'when', 'where', 'is', 'are', 'was', 'were',
+            'the', 'so', 'a', 'an', 'to', 'on', 'in', 'and', 'also', 'it', 'its', 'itss', 'me',
+            'search', 'find', 'internet', 'web', 'online', 'explain', 'show'
+        }
+        words = [w for w in re.findall(r'[a-zA-Z0-9\.\-]+', clean_q) if w.lower() not in filler_words and len(w) > 1]
+        keyword_q = " ".join(words[:6]) if words else clean_q
         recent_q = f"{keyword_q} {current_year}" if str(current_year) not in keyword_q else keyword_q
-        return [recent_q, keyword_q], clean_q[:40].title()
+        return [keyword_q, recent_q], clean_q[:40].title()
 
     def formulate_verification_queries(
         self,
@@ -332,7 +363,7 @@ class LLMService:
                 try:
                     llm = self._get_llm(key, streaming=False, temperature=0.1)
                     res = llm.invoke([HumanMessage(content=prompt)])
-                    raw = res.content if isinstance(res.content, str) else str(res.content)
+                    raw = extract_text_from_content(res.content).strip()
                     match = re.search(r'\{.*\}', raw, re.DOTALL)
                     if match:
                         data = json.loads(match.group(0))
@@ -424,7 +455,7 @@ class LLMService:
             try:
                 llm = self._get_fast_llm(key, temperature=0.3)
                 res = llm.invoke([HumanMessage(content=prompt)])
-                raw = res.content.strip()
+                raw = extract_text_from_content(res.content).strip()
                 # Parse JSON array
                 match = re.search(r'\[.*\]', raw, re.DOTALL)
                 if match:
@@ -457,7 +488,7 @@ class LLMService:
             try:
                 llm = self._get_fast_llm(key, temperature=0.2)
                 res = llm.invoke([HumanMessage(content=title_prompt)])
-                title = res.content.strip().strip('"').strip("'")
+                title = extract_text_from_content(res.content).strip().strip('"').strip("'")
                 if title:
                     return title[:60]
             except Exception:

@@ -1,8 +1,11 @@
 import logging
 import re
+import warnings
 from urllib.parse import urlparse
 from typing import List, Dict, Any, Optional
 import httpx
+
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*duckduckgo_search.*")
 
 try:
     from ddgs import DDGS

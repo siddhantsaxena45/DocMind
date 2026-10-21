@@ -374,6 +374,12 @@ class RAGService:
             except Exception:
                 pass
 
+        # Extract any explicit URLs from the user query itself (e.g. "check sidcode.ai", "what is stripe.com")
+        query_urls = extract_urls_from_text(query)
+        for qu in query_urls:
+            if qu not in extracted_doc_links and not qu.startswith("mailto:"):
+                extracted_doc_links.append(qu)
+
         if enable_web_search:
             is_verification = is_verification_query(query)
 
@@ -423,6 +429,17 @@ class RAGService:
                         f"\n### REAL-TIME WEB SEARCH EVIDENCE (Targeted Searches: {', '.join(search_queries)}):\n"
                         f"DocMind gathered fresh facts and up-to-date sources using multi-angle queries."
                     )
+
+                # LIVE FETCH: If target URLs were referenced in the query, inspect them live directly!
+                if extracted_doc_links:
+                    query_live_sources = web_search_service.fetch_multiple_urls(extracted_doc_links[:3])
+                    if query_live_sources:
+                        live_fetched_sources.extend(query_live_sources)
+                        context_parts.append("\n### LIVE VISITED EVIDENCE (Directly Fetched from Referenced URLs):")
+                        for l_idx, live_item in enumerate(query_live_sources, start=1):
+                            context_parts.append(
+                                f"[[LIVE_LINK_{l_idx}]] Target URL: {live_item.get('url')}\nPage Title: {live_item.get('title')}\nLive Content:\n{live_item.get('snippet')}"
+                            )
 
             if web_results:
                 for idx, item in enumerate(web_results, start=1):

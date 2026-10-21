@@ -13,7 +13,7 @@ from app.core.config import settings, api_key_rotator
 
 
 URL_REGEX = re.compile(
-    r'(?:https?://[^\s<>"\'\(\)]+|www\.[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}[^\s<>"\'\(\)]*|(?:github\.com|linkedin\.com/in|leetcode\.com|kaggle\.com|huggingface\.co)/[a-zA-Z0-9_.\-]+(?:/[a-zA-Z0-9_.\-]+)*)',
+    r'(?:https?://[^\s<>"\'\(\)]+|www\.[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}[^\s<>"\'\(\)]*|[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*\.(?:ai|com|org|io|dev|app|net|co|in|edu|gov|me|xyz)(?:/[^\s<>"\'\(\)]*)?|(?:github\.com|linkedin\.com/in|leetcode\.com|kaggle\.com|huggingface\.co)/[a-zA-Z0-9_.\-]+(?:/[a-zA-Z0-9_.\-]+)*)',
     re.IGNORECASE
 )
 
@@ -29,6 +29,8 @@ def clean_url(url: Optional[str]) -> Optional[str]:
     if not u:
         return None
     if u.startswith("www."):
+        u = "https://" + u
+    elif re.search(r'^[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*\.(?:ai|com|org|io|dev|app|net|co|in|edu|gov|me|xyz)(?:/.*)?$', u, re.IGNORECASE):
         u = "https://" + u
     elif any(u.lower().startswith(prefix) for prefix in ["github.com", "linkedin.com", "leetcode.com", "kaggle.com", "huggingface.co"]):
         u = "https://" + u
