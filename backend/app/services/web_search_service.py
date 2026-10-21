@@ -1,5 +1,7 @@
 import logging
+import json
 import re
+import urllib.parse
 import warnings
 from urllib.parse import urlparse
 from typing import List, Dict, Any, Optional
@@ -40,6 +42,28 @@ def is_financial_query(query: str) -> bool:
         "pe ratio", "p/e", "investor relations", "annual report", "financial performance"
     ]
     return any(term in q for term in financial_terms)
+
+def is_result_relevant(title: str, snippet: str, url: str, query: str) -> bool:
+    """
+    Guards against search engine fallback hallucinations (e.g. DuckDuckGo falling back to
+    Delhi Capitals cricket or random hardware when searching for a coding channel).
+    Checks that the result matches at least one substantive token from the query.
+    """
+    stop_words = {
+        'the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with', 'by',
+        'is', 'are', 'was', 'were', 'it', 'its', 'from', 'as', 'about', 'tell', 'show',
+        'search', 'youtube', 'channel', 'video', 'videos', 'online', 'web', 'page', 'site',
+        'check', 'find', 'who', 'what', 'where', 'how', 'when', 'does', 'official', 'link'
+    }
+    q_words = [
+        w.lower() for w in re.findall(r'[a-zA-Z0-9]+', query)
+        if len(w) > 2 and w.lower() not in stop_words
+    ]
+    if not q_words:
+        return True
+
+    combined = f"{title} {snippet} {url}".lower()
+    return any(w in combined for w in q_words)
 
 def extract_site_metadata(url: str) -> tuple[str, str]:
     """
@@ -107,6 +131,9 @@ class WebSearchService:
                             continue
                         # Filter out financial ticker aggregator domains (e.g. stockanalysis, marketwatch) unless query is financial
                         if any(ticker in d for ticker in FINANCIAL_TICKER_DOMAINS) and not financial_intent:
+                            continue
+                        # Filter out search engine fallback hallucinations that have zero match with query terms
+                        if not is_result_relevant(title, body, href, clean_query):
                             continue
                         site_name, favicon = extract_site_metadata(href)
                         results.append({
@@ -179,6 +206,9 @@ class WebSearchService:
                             continue
 
                         snippet = s_elem[0].text_content().strip() if s_elem else ""
+                        # Filter out search engine fallback hallucinations that have zero match with query terms
+                        if not is_result_relevant(real_title, snippet, real_href, query):
+                            continue
                         site_name, favicon = extract_site_metadata(real_href)
                         results.append({
                             "title": real_title or real_href,
@@ -220,7 +250,95 @@ class WebSearchService:
             if not sub_results and not merged_results and idx >= 1:
                 break
 
+        # YouTube direct search fallback if DuckDuckGo failed, was blocked, or returned 0 relevant hits
+        if not merged_results and queries:
+            combined_q = " ".join(queries).lower()
+            if any(term in combined_q for term in ["youtube", "channel", "video", "creator", "podcast", "insaan", "sidcode"]):
+                clean_target = re.sub(r'[\'"]', '', queries[0]).replace("youtube", "").replace("channel", "").strip()
+                yt_results = self.search_youtube(clean_target or queries[0], max_results=max_results)
+                for item in yt_results:
+                    url = item.get("url", "").rstrip("/")
+                    if url and url.lower() not in seen_urls:
+                        seen_urls.add(url.lower())
+                        merged_results.append(item)
+
         return merged_results
+
+    def search_youtube(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
+        """
+        Directly queries YouTube search and parses channel / video cards.
+        Bypasses search engine rate-limits and blocks on cloud datacenter IPs.
+        """
+        clean_q = re.sub(r'[\'"]', '', query).strip()
+        encoded = urllib.parse.quote_plus(clean_q)
+        url = f"https://www.youtube.com/results?search_query={encoded}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        results = []
+        try:
+            with httpx.Client(timeout=4.0, follow_redirects=True) as client:
+                resp = client.get(url, headers=headers)
+                if resp.status_code == 200:
+                    html_text = resp.text
+                    match = re.search(r'var ytInitialData\s*=\s*({.+?});</script>', html_text)
+                    if match:
+                        data = json.loads(match.group(1))
+                        contents = (
+                            data.get("contents", {})
+                            .get("twoColumnSearchResultsRenderer", {})
+                            .get("primaryContents", {})
+                            .get("sectionListRenderer", {})
+                            .get("contents", [])
+                        )
+                        for sec in contents:
+                            item_sec = sec.get("itemSectionRenderer", {}).get("contents", [])
+                            for item in item_sec:
+                                # Channel result
+                                if "channelRenderer" in item:
+                                    ch = item["channelRenderer"]
+                                    ch_id = ch.get("channelId", "")
+                                    title = ch.get("title", {}).get("simpleText") or "YouTube Channel"
+                                    subs = ch.get("subscriberCountText", {}).get("simpleText", "")
+                                    desc = "".join(r.get("text", "") for r in ch.get("descriptionSnippet", {}).get("runs", []))
+                                    ch_url = f"https://www.youtube.com/channel/{ch_id}"
+                                    if "navigationEndpoint" in ch:
+                                        canon = ch["navigationEndpoint"].get("browseEndpoint", {}).get("canonicalBaseUrl", "")
+                                        if canon:
+                                            ch_url = f"https://www.youtube.com{canon}"
+                                    results.append({
+                                        "title": f"{title} - YouTube",
+                                        "url": ch_url,
+                                        "snippet": f"Official YouTube Channel: {title}. {subs}. {desc}".strip(),
+                                        "site_name": "YouTube",
+                                        "favicon": "https://www.google.com/s2/favicons?domain=youtube.com&sz=64",
+                                        "type": "web"
+                                    })
+                                # Video result
+                                elif "videoRenderer" in item:
+                                    vid = item["videoRenderer"]
+                                    vid_id = vid.get("videoId", "")
+                                    v_title = "".join(r.get("text", "") for r in vid.get("title", {}).get("runs", []))
+                                    ch_name = "".join(r.get("text", "") for r in vid.get("ownerText", {}).get("runs", []))
+                                    desc_snippet = ""
+                                    if vid.get("detailedMetadataSnippets"):
+                                        desc_snippet = "".join(r.get("text", "") for r in vid["detailedMetadataSnippets"][0].get("snippetText", {}).get("runs", []))
+                                    vid_url = f"https://www.youtube.com/watch?v={vid_id}"
+                                    results.append({
+                                        "title": f"{v_title} - YouTube",
+                                        "url": vid_url,
+                                        "snippet": f"YouTube video by {ch_name}: {v_title}. {desc_snippet}".strip(),
+                                        "site_name": "YouTube",
+                                        "favicon": "https://www.google.com/s2/favicons?domain=youtube.com&sz=64",
+                                        "type": "web"
+                                    })
+                                if len(results) >= max_results:
+                                    break
+        except Exception as e:
+            logger.warning(f"Direct YouTube search error: {e}")
+
+        return results
 
     def fetch_url_content(self, url: str) -> Optional[Dict[str, Any]]:
         """

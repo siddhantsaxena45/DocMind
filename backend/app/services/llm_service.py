@@ -319,11 +319,10 @@ class LLMService:
                 f"{history_context}\n\n"
                 f"User Prompt: {clean_q}\n\n"
                 "CRITICAL SEARCH STRATEGY:\n"
-                "1. If the user mentions or implies searching for a YouTube channel, creator, video series, or podcast (e.g., 'yt', 'youtube', 'channel', 'creator'), generate queries like '\"Name\" youtube channel' or '\"Name\" youtube' (DO NOT use 'site:youtube.com' as search engines often fail on site: with YouTube @handles).\n"
-                "2. When searching for a specific proper noun, person name, handle, or brand (e.g., 'SidCode', 'Siddhant Saxena'), put exact quotes around distinct names (e.g. '\"SidCode\" \"Siddhant Saxena\"') so the search engine does not match random generic products.\n"
-                "3. If checking whether an entity, channel, or platform exists, search for its official footprint and primary channel.\n"
-                "4. Strip conversational command words like 'can you search', 'cant u search', 'check whether it exists', 'on google', 'tell me'.\n"
-                "5. CONTEXT CONTINUITY: If previous conversation turns already identified verified handles (e.g. '@sidcodeai'), channel names, URLs, or creator details, incorporate those exact handles or keywords into at least one of the queries (e.g., '\"SidCode\" \"@sidcodeai\"') to preserve search continuity for follow-up questions.\n"
+                "1. PRESERVE ALL ENTITIES (CREATOR & CHANNEL): If the user mentions BOTH a creator/person name (e.g., 'Siddhant Saxena') and a channel/project name (e.g., 'SidCode'), you MUST combine BOTH in the primary queries: e.g., '\"SidCode\" \"Siddhant Saxena\" youtube' and 'SidCode Siddhant Saxena youtube channel'. NEVER drop the creator's name or the channel name!\n"
+                "2. When searching for a YouTube channel, creator, or podcast, generate queries like '\"Name\" youtube channel' or '\"Name\" youtube' with quotes around distinct proper nouns.\n"
+                "3. If previous conversation turns already identified verified handles (e.g. '@sidcodeai'), channel names, URLs, or creator details, incorporate those exact handles or keywords into at least one of the queries (e.g., '\"SidCode\" \"@sidcodeai\"') to preserve search continuity for follow-up questions.\n"
+                "4. Strip conversational command words like 'can you search', 'tell about', 'check whether it exists', 'on google'.\n"
                 "- Output ONLY a JSON object with this exact structure:\n"
                 "{\n"
                 '  "queries": ["query 1", "query 2", "query 3"],\n'
@@ -351,29 +350,35 @@ class LLMService:
             'check', 'tell', 'why', 'how', 'what', 'who', 'when', 'where', 'is', 'are', 'was', 'were',
             'the', 'so', 'a', 'an', 'to', 'on', 'in', 'and', 'also', 'it', 'its', 'itss', 'me',
             'search', 'find', 'internet', 'web', 'online', 'explain', 'show', 'cant', 'u', 'you',
-            'google', 'whether', 'exists', 'exist', 'not', 'or'
+            'google', 'whether', 'exists', 'exist', 'not', 'or', 'about', 'by'
         }
         words = [w for w in re.findall(r'[a-zA-Z0-9\.\-]+', clean_q) if w.lower() not in filler_words and len(w) > 1]
-        raw_keywords = " ".join(words[:5]) if words else clean_q
-        quoted_keywords = " ".join(f'"{w}"' if w[0].isupper() or len(w) > 4 else w for w in words[:4]) if words else clean_q
+        entity_words = [
+            w for w in words
+            if w.lower() not in ['youtube', 'channel', 'video', 'videos', 'creator', 'podcast', 'yt']
+        ]
+        target_name = " ".join(entity_words) if entity_words else (" ".join(words[:4]) if words else clean_q)
+        raw_keywords = " ".join(words[:6]) if words else clean_q
 
         combined_text = (clean_q + " " + history_context).lower()
         has_yt_intent = any(x in combined_text for x in ["yt", "youtube", "channel", "video", "creator", "podcast"])
 
         if has_yt_intent:
-            target_name = words[0] if words else raw_keywords
             queries = [
+                f"{target_name} youtube",
                 f'"{target_name}" youtube channel',
-                f'{raw_keywords} youtube channel',
-                f'"{target_name}" youtube'
+                f"site:youtube.com {target_name}"
             ]
+            topic = f"{target_name} YouTube"[:35]
         else:
             queries = [
-                quoted_keywords,
-                f"{raw_keywords} {current_year}" if str(current_year) not in raw_keywords else raw_keywords
+                target_name,
+                f"{target_name} {current_year}" if str(current_year) not in target_name else target_name,
+                raw_keywords
             ]
+            topic = target_name[:35].title()
 
-        return queries[:3], clean_q[:40].title()
+        return queries[:3], topic
 
     def formulate_verification_queries(
         self,
