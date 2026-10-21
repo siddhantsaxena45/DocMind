@@ -20,10 +20,26 @@ SPAM_MARKETPLACE_DOMAINS = {
     "gearbest.com", "taobao.com"
 }
 
+FINANCIAL_TICKER_DOMAINS = {
+    "stockanalysis.com", "marketwatch.com", "investing.com",
+    "seekingalpha.com", "macrotrends.net", "zacks.com",
+    "fool.com", "finviz.com", "barchart.com", "tipranks.com",
+    "gurufocus.com", "tradingview.com", "finance.yahoo.com"
+}
+
 def is_shopping_query(query: str) -> bool:
     q = query.lower()
     shopping_terms = ["buy", "price", "shop", "store", "purchase", "order", "discount", "coupon", "cost", "for sale"]
     return any(term in q for term in shopping_terms)
+
+def is_financial_query(query: str) -> bool:
+    q = query.lower()
+    financial_terms = [
+        "stock", "ticker", "shares", "share price", "stock price", "market cap",
+        "earnings", "quarterly", "dividend", "nasdaq", "nyse", "bvl:", "balance sheet",
+        "pe ratio", "p/e", "investor relations", "annual report", "financial performance"
+    ]
+    return any(term in q for term in financial_terms)
 
 def extract_site_metadata(url: str) -> tuple[str, str]:
     """
@@ -73,6 +89,7 @@ class WebSearchService:
             return results
 
         shopping_intent = is_shopping_query(clean_query)
+        financial_intent = is_financial_query(clean_query)
 
         # 1. Primary: DDGS python library
         try:
@@ -83,10 +100,13 @@ class WebSearchService:
                     href = item.get("href", "")
                     body = item.get("body", "")
                     if href and (title or body):
-                        # Filter out spam marketplace domains unless the user explicitly wants shopping
                         parsed_href = urlparse(href)
                         d = parsed_href.netloc.lower()
+                        # Filter out spam marketplace domains unless the user explicitly wants shopping
                         if any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS) and not shopping_intent:
+                            continue
+                        # Filter out financial ticker aggregator domains (e.g. stockanalysis, marketwatch) unless query is financial
+                        if any(ticker in d for ticker in FINANCIAL_TICKER_DOMAINS) and not financial_intent:
                             continue
                         site_name, favicon = extract_site_metadata(href)
                         results.append({
@@ -122,6 +142,7 @@ class WebSearchService:
         data = {"q": query}
         results = []
         shopping_intent = is_shopping_query(query)
+        financial_intent = is_financial_query(query)
         import urllib.parse
         try:
             with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
@@ -153,6 +174,8 @@ class WebSearchService:
                         parsed_href = urlparse(real_href)
                         d = parsed_href.netloc.lower()
                         if any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS) and not shopping_intent:
+                            continue
+                        if any(ticker in d for ticker in FINANCIAL_TICKER_DOMAINS) and not financial_intent:
                             continue
 
                         snippet = s_elem[0].text_content().strip() if s_elem else ""

@@ -302,9 +302,14 @@ class LLMService:
 
         history_context = ""
         if chat_history:
-            user_past = [m.get("content", "") for m in chat_history[-4:] if m.get("role") in ["user", "human"]]
-            if user_past:
-                history_context = f"\nRecent user conversation context:\n" + "\n".join(f"- {p}" for p in user_past[-2:])
+            history_lines = []
+            for m in chat_history[-6:]:
+                r = m.get("role", "")
+                c = m.get("content", "")[:350].strip()
+                if c:
+                    history_lines.append(f"{r.capitalize()}: {c}")
+            if history_lines:
+                history_context = f"\nRecent conversation context:\n" + "\n".join(history_lines)
 
         api_keys = api_key_rotator.get_rotated_google_keys()
         if api_keys:
@@ -318,6 +323,7 @@ class LLMService:
                 "2. When searching for a specific proper noun, person name, handle, or brand (e.g., 'SidCode', 'Siddhant Saxena'), put exact quotes around distinct names (e.g. '\"SidCode\" \"Siddhant Saxena\"') so the search engine does not match random generic products.\n"
                 "3. If checking whether an entity, channel, or platform exists, search for its official footprint and primary channel.\n"
                 "4. Strip conversational command words like 'can you search', 'cant u search', 'check whether it exists', 'on google', 'tell me'.\n"
+                "5. CONTEXT CONTINUITY: If previous conversation turns already identified verified handles (e.g. '@sidcodeai'), channel names, URLs, or creator details, incorporate those exact handles or keywords into at least one of the queries (e.g., '\"SidCode\" \"@sidcodeai\"') to preserve search continuity for follow-up questions.\n"
                 "- Output ONLY a JSON object with this exact structure:\n"
                 "{\n"
                 '  "queries": ["query 1", "query 2", "query 3"],\n'

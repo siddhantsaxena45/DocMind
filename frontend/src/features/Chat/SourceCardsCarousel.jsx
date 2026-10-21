@@ -8,12 +8,10 @@ export default function SourceCardsCarousel({
 }) {
   if (!sources || sources.length === 0) return null;
 
-  // Filter sources to display ONLY those actually used / grounded in the answer.
-  // If sources explicitly have used_in_answer flags, show only used_in_answer === true.
-  const hasExplicitFlags = sources.some((s) => s.used_in_answer !== undefined);
-  const usedSources = hasExplicitFlags
-    ? sources.filter((s) => s.used_in_answer === true)
-    : sources;
+  // Filter sources to display ONLY those actually confirmed and grounded in the answer.
+  // During streaming or if sources were rejected, ungrounded candidates do not have used_in_answer === true,
+  // so we never display false citation cards or misleading "Used in answer" badges.
+  const usedSources = sources.filter((s) => s.used_in_answer === true);
 
   // If no sources were verified as used in the answer, do not display misleading cards
   if (usedSources.length === 0) {
@@ -110,12 +108,12 @@ export default function SourceCardsCarousel({
                 )}
               </div>
 
-              {/* Card Footer: Used Indicator */}
+              {/* Card Footer: Grounded Indicator */}
               <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-500">
-                <span className="text-emerald-400/90 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> Used in answer
+                <span className="text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> Grounded in answer
                 </span>
-                <span className="font-mono text-slate-400 group-hover:text-cyan-300">
+                <span className="font-mono text-cyan-300 font-bold bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/30">
                   [{citationNum}]
                 </span>
               </div>

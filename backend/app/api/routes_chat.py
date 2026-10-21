@@ -276,18 +276,22 @@ def send_message(
             (auto_title, conversation_id)
         )
 
-    # 3. Fetch past messages for context
+    # 3. Fetch past messages for context (most recent 12 turns in chronological order)
     cur.execute(
         """
-        SELECT role, content FROM messages
-        WHERE conversation_id = %s
-        ORDER BY created_at ASC
-        LIMIT 10
+        SELECT role, content FROM (
+            SELECT role, content, created_at FROM messages
+            WHERE conversation_id = %s
+            ORDER BY created_at DESC
+            LIMIT 12
+        ) sub ORDER BY created_at ASC
         """,
         (conversation_id,)
     )
     history_rows = cur.fetchall()
     chat_history = [{"role": r[0], "content": r[1]} for r in history_rows]
+    if chat_history and chat_history[-1].get("role") == "user" and chat_history[-1].get("content") == user_text:
+        chat_history = chat_history[:-1]
 
     # 4. RAG Retrieval
     doc_ids = req.selected_doc_ids if req.selected_doc_ids is not None else conv.get("selected_doc_ids", [])
@@ -430,13 +434,22 @@ async def stream_message(
         new_title = llm_service.generate_title(user_text)
         cur.execute("UPDATE conversations SET title = %s WHERE id = %s", (new_title, conversation_id))
 
-    # Fetch history
+    # Fetch recent history (most recent 12 turns in chronological order)
     cur.execute(
-        "SELECT role, content FROM messages WHERE conversation_id = %s ORDER BY created_at ASC LIMIT 10",
+        """
+        SELECT role, content FROM (
+            SELECT role, content, created_at FROM messages
+            WHERE conversation_id = %s
+            ORDER BY created_at DESC
+            LIMIT 12
+        ) sub ORDER BY created_at ASC
+        """,
         (conversation_id,)
     )
     history_rows = cur.fetchall()
     chat_history = [{"role": r[0], "content": r[1]} for r in history_rows]
+    if chat_history and chat_history[-1].get("role") == "user" and chat_history[-1].get("content") == user_text:
+        chat_history = chat_history[:-1]
 
     conn.commit()
     cur.close()
@@ -568,18 +581,22 @@ def regenerate_response(
         (conversation_id,)
     )
 
-    # Fetch history
+    # Fetch recent history (most recent 12 turns in chronological order)
     cur.execute(
         """
-        SELECT role, content FROM messages
-        WHERE conversation_id = %s
-        ORDER BY created_at ASC
-        LIMIT 10
+        SELECT role, content FROM (
+            SELECT role, content, created_at FROM messages
+            WHERE conversation_id = %s
+            ORDER BY created_at DESC
+            LIMIT 12
+        ) sub ORDER BY created_at ASC
         """,
         (conversation_id,)
     )
     history_rows = cur.fetchall()
     chat_history = [{"role": r[0], "content": r[1]} for r in history_rows]
+    if chat_history and chat_history[-1].get("role") == "user" and chat_history[-1].get("content") == user_text:
+        chat_history = chat_history[:-1]
 
     # RAG Retrieval
     context, citations, search_topic = rag_service.assemble_rag_context(
