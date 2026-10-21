@@ -60,7 +60,7 @@ def extract_site_metadata(url: str) -> tuple[str, str]:
 class WebSearchService:
     def __init__(self):
         self.max_results = 6
-        self.timeout = 8.0
+        self.timeout = 4.0
 
     def search(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:
         """
@@ -180,7 +180,7 @@ class WebSearchService:
         merged_results: List[Dict[str, Any]] = []
         seen_urls = set()
 
-        for q in queries:
+        for idx, q in enumerate(queries):
             if not q.strip():
                 continue
             sub_results = self.search(q.strip(), max_results=4)
@@ -192,6 +192,9 @@ class WebSearchService:
                     if len(merged_results) >= max_results:
                         break
             if len(merged_results) >= max_results:
+                break
+            # If search engine is timing out / blocked on datacenter IP, don't cascade 3 timeouts
+            if not sub_results and not merged_results and idx >= 1:
                 break
 
         return merged_results
