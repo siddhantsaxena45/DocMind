@@ -108,10 +108,12 @@ def is_verification_query(query: str) -> bool:
         "verify", "verification", "fact check", "factcheck", "check on internet",
         "search on internet", "search internet", "search the internet", "check online",
         "search online", "look up", "lookup", "google him", "google this", "google them",
-        "background check", "is this real", "is this true", "confirm claims", "claims",
-        "github", "linkedin", "portfolio", "leetcode", "credentials", "online presence",
-        "on internet", "on the web", "legit", "authentic", "audit this", "who is this",
-        "matching", "check claims", "verify his claims", "verify claims", "given links"
+        "search on google", "search google", "on google", "whether it exists", "exists or not",
+        "does it exist", "find out", "youtube", "yt channel", "yt", "channel", "creator",
+        "cant u search", "can you search", "background check", "is this real", "is this true",
+        "confirm claims", "claims", "github", "linkedin", "portfolio", "leetcode", "credentials",
+        "online presence", "on internet", "on the web", "legit", "authentic", "audit this",
+        "who is this", "matching", "check claims", "verify his claims", "verify claims", "given links"
     ]
     return any(t in q for t in terms)
 
@@ -276,26 +278,43 @@ class LLMService:
         words = re.findall(r'\b\w+\b', cleaned)
         return " ".join(words[:5]).title()
 
-    def formulate_web_research_queries(self, query: str) -> Tuple[List[str], str]:
+    def formulate_web_research_queries(
+        self,
+        query: str,
+        chat_history: Optional[List[dict]] = None
+    ) -> Tuple[List[str], str]:
         """
-        Generates targeted, temporally-aware search queries from the user's prompt.
-        Ensures queries are optimized for freshness (current year) and keyword relevance.
+        Generates targeted, temporally-aware search queries from the user's prompt and conversation context.
+        Ensures queries are optimized for freshness, exact entity quoting, and platform targeting (YouTube/GitHub/etc.).
         Returns (list_of_queries, display_topic).
         """
         now = datetime.now(timezone.utc)
         current_year = now.year
         clean_q = query.strip()
 
+        history_context = ""
+        if chat_history:
+            user_past = [m.get("content", "") for m in chat_history[-4:] if m.get("role") in ["user", "human"]]
+            if user_past:
+                history_context = f"\nRecent user conversation context:\n" + "\n".join(f"- {p}" for p in user_past[-2:])
+
         api_keys = api_key_rotator.get_rotated_google_keys()
         if api_keys:
             prompt = (
-                f"You are a search query optimizer. The current year is {current_year}.\n"
-                f"Convert the user's conversational prompt into 2 distinct, highly effective search queries for a search engine.\n"
-                f"- Query 1 should be the core keyword search for facts, background, and entities.\n"
-                f"- Query 2 should be targeted for the most recent updates, current year ({current_year}), or latest statistics.\n"
-                f"- Output ONLY a JSON object with this exact structure:\n"
-                f'{{\n  "queries": ["keyword query 1", "recent query 2"],\n  "topic": "Concise 3-5 word topic for UI badge"\n}}\n\n'
-                f"User Prompt: {clean_q}"
+                f"You are a search query optimizer for a real-time research engine. The current year is {current_year}.\n"
+                f"Convert the user's prompt into 2 or 3 distinct, highly effective search queries for a search engine.\n"
+                f"{history_context}\n\n"
+                f"User Prompt: {clean_q}\n\n"
+                "CRITICAL SEARCH STRATEGY:\n"
+                "1. If the user mentions or implies searching for a YouTube channel, creator, video series, or podcast (e.g., 'yt', 'youtube', 'channel', 'creator'), you MUST generate at least one query targeted at YouTube (e.g. '\"Name\" youtube channel' or 'site:youtube.com \"Name\"').\n"
+                "2. When searching for a specific proper noun, person name, handle, or brand (e.g., 'SidCode', 'Siddhant Saxena'), put exact quotes around distinct names (e.g. '\"SidCode\" \"Siddhant Saxena\"') so the search engine does not match random generic products.\n"
+                "3. If checking whether an entity, channel, or platform exists, search for its official footprint and primary channel.\n"
+                "4. Strip conversational command words like 'can you search', 'cant u search', 'check whether it exists', 'on google', 'tell me'.\n"
+                "- Output ONLY a JSON object with this exact structure:\n"
+                "{\n"
+                '  "queries": ["query 1", "query 2", "query 3"],\n'
+                '  "topic": "Concise 3-5 word topic for UI badge"\n'
+                "}\n"
             )
             for key in api_keys[:2]:
                 try:
@@ -308,7 +327,7 @@ class LLMService:
                         queries = [str(q).strip() for q in data.get("queries", []) if str(q).strip()]
                         topic = str(data.get("topic", "")).strip() or clean_q[:40].title()
                         if queries:
-                            return queries[:2], topic
+                            return queries[:3], topic
                 except Exception as e:
                     if any(x in str(e).lower() for x in ["not_found", "404", "no longer available", "not available"]):
                         self._switch_to_next_model(self.current_model)
@@ -317,12 +336,24 @@ class LLMService:
         filler_words = {
             'check', 'tell', 'why', 'how', 'what', 'who', 'when', 'where', 'is', 'are', 'was', 'were',
             'the', 'so', 'a', 'an', 'to', 'on', 'in', 'and', 'also', 'it', 'its', 'itss', 'me',
-            'search', 'find', 'internet', 'web', 'online', 'explain', 'show'
+            'search', 'find', 'internet', 'web', 'online', 'explain', 'show', 'cant', 'u', 'you',
+            'google', 'whether', 'exists', 'exist', 'not', 'or'
         }
         words = [w for w in re.findall(r'[a-zA-Z0-9\.\-]+', clean_q) if w.lower() not in filler_words and len(w) > 1]
-        keyword_q = " ".join(words[:6]) if words else clean_q
-        recent_q = f"{keyword_q} {current_year}" if str(current_year) not in keyword_q else keyword_q
-        return [keyword_q, recent_q], clean_q[:40].title()
+        raw_keywords = " ".join(words[:5]) if words else clean_q
+        quoted_keywords = " ".join(f'"{w}"' if w[0].isupper() or len(w) > 4 else w for w in words[:4]) if words else clean_q
+
+        combined_text = (clean_q + " " + history_context).lower()
+        has_yt_intent = any(x in combined_text for x in ["yt", "youtube", "channel", "video", "creator", "podcast"])
+
+        queries = [quoted_keywords]
+        if has_yt_intent:
+            queries.append(f"{raw_keywords} youtube channel")
+            queries.append(f'site:youtube.com "{words[0]}"' if words else f"{raw_keywords} youtube")
+        else:
+            queries.append(f"{raw_keywords} {current_year}" if str(current_year) not in raw_keywords else raw_keywords)
+
+        return queries[:3], clean_q[:40].title()
 
     def formulate_verification_queries(
         self,

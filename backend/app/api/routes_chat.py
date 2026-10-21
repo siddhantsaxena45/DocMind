@@ -281,7 +281,8 @@ def send_message(
         query=user_text,
         user_id=current_user.user_id,
         document_ids=doc_ids,
-        enable_web_search=web_enabled
+        enable_web_search=web_enabled,
+        chat_history=chat_history
     )
 
     # 5. Extract research query if web search or docs used
@@ -431,7 +432,8 @@ async def stream_message(
         query=user_text,
         user_id=user_id,
         document_ids=doc_ids,
-        enable_web_search=web_enabled
+        enable_web_search=web_enabled,
+        chat_history=chat_history
     )
 
     # Extract research query for UI status badge
@@ -557,7 +559,8 @@ def regenerate_response(
         query=user_text,
         user_id=current_user.user_id,
         document_ids=conv.get("selected_doc_ids", []),
-        enable_web_search=conv["web_search_enabled"]
+        enable_web_search=conv["web_search_enabled"],
+        chat_history=chat_history
     )
 
     research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if conv["web_search_enabled"] else None)

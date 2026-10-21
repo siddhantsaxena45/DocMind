@@ -266,7 +266,8 @@ class RAGService:
         query: str,
         user_id: str,
         document_ids: Optional[List[str]] = None,
-        enable_web_search: bool = True
+        enable_web_search: bool = True,
+        chat_history: Optional[List[dict]] = None
     ) -> Tuple[str, List[Citation], Optional[str]]:
         """
         Assembles hybrid document evidence and web search results into unified context
@@ -380,6 +381,14 @@ class RAGService:
             if qu not in extracted_doc_links and not qu.startswith("mailto:"):
                 extracted_doc_links.append(qu)
 
+        # Also extract URLs from recent user turns in chat history
+        if chat_history:
+            for past_m in chat_history[-3:]:
+                if past_m.get("role") in ["user", "human"]:
+                    for past_u in extract_urls_from_text(past_m.get("content", "")):
+                        if past_u not in extracted_doc_links and not past_u.startswith("mailto:"):
+                            extracted_doc_links.append(past_u)
+
         if enable_web_search:
             is_verification = is_verification_query(query)
 
@@ -422,7 +431,7 @@ class RAGService:
                                 f"[[LIVE_LINK_{l_idx}]] Target URL: {l_url}\nPage Title: {l_title}\nLive Content:\n{l_snippet}"
                             )
             else:
-                search_queries, search_topic = llm_service.formulate_web_research_queries(query)
+                search_queries, search_topic = llm_service.formulate_web_research_queries(query, chat_history=chat_history)
                 web_results = web_search_service.search_multi(queries=search_queries, max_results=8)
                 if web_results:
                     context_parts.append(
@@ -430,12 +439,19 @@ class RAGService:
                         f"DocMind gathered fresh facts and up-to-date sources using multi-angle queries."
                     )
 
-                # LIVE FETCH: If target URLs were referenced in the query, inspect them live directly!
-                if extracted_doc_links:
-                    query_live_sources = web_search_service.fetch_multiple_urls(extracted_doc_links[:3])
+                # LIVE FETCH: Inspect referenced links or discovered profiles/channels (YouTube, GitHub, LinkedIn, .ai)
+                inspect_candidates = list(extracted_doc_links)
+                for w in web_results:
+                    wu = w.get("url", "")
+                    if wu and any(p in wu.lower() for p in ["youtube.com", "youtu.be", "github.com", "linkedin.com", ".ai"]):
+                        if wu not in inspect_candidates and not wu.startswith("mailto:"):
+                            inspect_candidates.append(wu)
+
+                if inspect_candidates:
+                    query_live_sources = web_search_service.fetch_multiple_urls(inspect_candidates[:4])
                     if query_live_sources:
                         live_fetched_sources.extend(query_live_sources)
-                        context_parts.append("\n### LIVE VISITED EVIDENCE (Directly Fetched from Referenced URLs):")
+                        context_parts.append("\n### LIVE VISITED EVIDENCE (Directly Fetched from Target Profiles & URLs):")
                         for l_idx, live_item in enumerate(query_live_sources, start=1):
                             context_parts.append(
                                 f"[[LIVE_LINK_{l_idx}]] Target URL: {live_item.get('url')}\nPage Title: {live_item.get('title')}\nLive Content:\n{live_item.get('snippet')}"

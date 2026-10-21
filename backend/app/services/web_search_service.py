@@ -14,10 +14,21 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+SPAM_MARKETPLACE_DOMAINS = {
+    "aliexpress.com", "aliexpress.us", "temu.com", "alibaba.com",
+    "dhgate.com", "wish.com", "made-in-china.com", "banggood.com",
+    "gearbest.com", "taobao.com"
+}
+
+def is_shopping_query(query: str) -> bool:
+    q = query.lower()
+    shopping_terms = ["buy", "price", "shop", "store", "purchase", "order", "discount", "coupon", "cost", "for sale"]
+    return any(term in q for term in shopping_terms)
+
 def extract_site_metadata(url: str) -> tuple[str, str]:
     """
     Returns (site_name, favicon_url)
-    e.g. ("r/Twitch", "https://www.google.com/s2/favicons?domain=reddit.com&sz=64")
+    e.g. ("YouTube", "https://www.google.com/s2/favicons?domain=youtube.com&sz=64")
     """
     try:
         parsed = urlparse(url)
@@ -25,6 +36,12 @@ def extract_site_metadata(url: str) -> tuple[str, str]:
         if domain.startswith("www."):
             domain = domain[4:]
         
+        # YouTube detection
+        if "youtube.com" in domain or "youtu.be" in domain:
+            site_name = "YouTube"
+            favicon = "https://www.google.com/s2/favicons?domain=youtube.com&sz=64"
+            return site_name, favicon
+
         # Subreddit detection
         if "reddit.com" in domain:
             match = re.search(r"/r/([a-zA-Z0-9_]+)", parsed.path)
@@ -55,15 +72,22 @@ class WebSearchService:
         if not clean_query:
             return results
 
+        shopping_intent = is_shopping_query(clean_query)
+
         # 1. Primary: DDGS python library
         try:
             with DDGS(timeout=self.timeout) as ddgs:
-                ddg_gen = ddgs.text(clean_query, max_results=max_results)
+                ddg_gen = ddgs.text(clean_query, max_results=max_results + 4)
                 for item in ddg_gen:
                     title = item.get("title", "")
                     href = item.get("href", "")
                     body = item.get("body", "")
                     if href and (title or body):
+                        # Filter out spam marketplace domains unless the user explicitly wants shopping
+                        parsed_href = urlparse(href)
+                        d = parsed_href.netloc.lower()
+                        if any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS) and not shopping_intent:
+                            continue
                         site_name, favicon = extract_site_metadata(href)
                         results.append({
                             "title": title or href,
@@ -73,6 +97,8 @@ class WebSearchService:
                             "favicon": favicon,
                             "type": "web"
                         })
+                        if len(results) >= max_results:
+                            break
             if results:
                 return results
         except Exception as e:
@@ -95,6 +121,7 @@ class WebSearchService:
         }
         data = {"q": query}
         results = []
+        shopping_intent = is_shopping_query(query)
         with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
             resp = client.post(url, data=data, headers=headers)
             if resp.status_code == 200:
@@ -102,10 +129,14 @@ class WebSearchService:
                 tree = html.fromstring(resp.text)
                 links = tree.xpath('//a[contains(@class, "result__url")]')
                 titles = tree.xpath('//a[contains(@class, "result__snippet")]')
-                for i in range(min(len(links), max_results)):
+                for i in range(min(len(links), max_results + 4)):
                     href = links[i].get("href", "")
                     snippet = titles[i].text_content().strip() if i < len(titles) else ""
                     if href:
+                        parsed_href = urlparse(href)
+                        d = parsed_href.netloc.lower()
+                        if any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS) and not shopping_intent:
+                            continue
                         site_name, favicon = extract_site_metadata(href)
                         results.append({
                             "title": href,
@@ -115,6 +146,8 @@ class WebSearchService:
                             "favicon": favicon,
                             "type": "web"
                         })
+                        if len(results) >= max_results:
+                            break
         return results
 
     def search_multi(self, queries: List[str], max_results: int = 8) -> List[Dict[str, Any]]:
@@ -185,6 +218,14 @@ class WebSearchService:
                         bio_text = re.sub(r'<[^>]+>', ' ', bio_match.group(1)).strip()
                         if bio_text:
                             extracted_lines.append(f"GitHub Bio: {bio_text}")
+
+                elif "youtube.com" in clean_u.lower() or "youtu.be" in clean_u.lower():
+                    desc_match = re.search(r'<meta\s+(?:name|property)=["\'](?:description|og:description)["\']\s+content=["\'](.*?)["\']', html_text, re.IGNORECASE)
+                    if desc_match:
+                        extracted_lines.append(f"YouTube Description: {desc_match.group(1).strip()}")
+                    og_title = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\'](.*?)["\']', html_text, re.IGNORECASE)
+                    if og_title:
+                        title = og_title.group(1).strip()
 
                 body_text = re.sub(r'<[^>]+>', ' ', clean_html)
                 body_text = re.sub(r'\s+', ' ', body_text).strip()
