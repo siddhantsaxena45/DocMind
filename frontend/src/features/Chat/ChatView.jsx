@@ -3,7 +3,7 @@ import {
   Send, Bot, User, Loader2, Sparkles, Quote, Globe, Share2,
   Copy, Check, RotateCcw, Menu, ExternalLink, ChevronDown,
   Paperclip, ArrowUp, AlertCircle, FileText, Database, Plus, X,
-  Search, Shield, CheckCircle2, Trash2, ThumbsUp, ThumbsDown,
+  Search, Shield, CheckCircle2, Trash2,
   Pencil
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,7 +60,6 @@ export default function ChatView({
   const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
   const [docSearchQuery, setDocSearchQuery] = useState("");
   const [activeSourcesModal, setActiveSourcesModal] = useState(null);
-  const [feedbackMap, setFeedbackMap] = useState({});
   const [editingMsgIdx, setEditingMsgIdx] = useState(null);
   const [editContent, setEditContent] = useState("");
 
@@ -174,6 +173,8 @@ export default function ChatView({
       const decoder = new TextDecoder();
       let buffer = "";
 
+      let currentEvent = null;
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -181,8 +182,6 @@ export default function ChatView({
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
-
-        let currentEvent = null;
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -255,6 +254,18 @@ export default function ChatView({
                       sources: parsed.sources || updated[lastIdx].sources,
                       related_questions: parsed.related_questions || updated[lastIdx].related_questions || [],
                       research_query: parsed.research_query || updated[lastIdx].research_query
+                    };
+                  }
+                  return updated;
+                });
+              } else if (currentEvent === "error") {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      content: parsed.error ? `⚠️ **Error:** ${parsed.error}` : "⚠️ An error occurred while generating the response. Please try again."
                     };
                   }
                   return updated;
@@ -410,13 +421,6 @@ export default function ChatView({
     navigator.clipboard.writeText(text);
     setCopiedMsgIdx(idx);
     setTimeout(() => setCopiedMsgIdx(null), 2000);
-  };
-
-  const handleFeedback = (msgId, type) => {
-    setFeedbackMap((prev) => ({
-      ...prev,
-      [msgId]: prev[msgId] === type ? null : type
-    }));
   };
 
   const toggleWebSearch = async () => {
@@ -731,11 +735,28 @@ export default function ChatView({
                         />
                       )}
 
-                      {/* 2. Main Markdown & Table Content */}
-                      <MarkdownTableRenderer
-                        content={msg.content || (streaming && isLastMessage ? "Thinking..." : "")}
-                        messageIdx={idx}
-                      />
+                      {/* 2. Main Markdown Content or Animated Thinking Loader */}
+                      {msg.content ? (
+                        <MarkdownTableRenderer
+                          content={msg.content}
+                          messageIdx={idx}
+                        />
+                      ) : streaming && isLastMessage ? (
+                        <div className="flex items-center gap-3 py-3 px-1 text-slate-300">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:0ms]" />
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:150ms]" />
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:300ms]" />
+                          </div>
+                          <span className="text-xs text-slate-300 font-medium tracking-wide">
+                            {msg.research_query
+                              ? `Researching ${msg.research_query}...`
+                              : conversation?.web_search_enabled
+                              ? "Searching the web & synthesizing..."
+                              : "Thinking..."}
+                          </span>
+                        </div>
+                      ) : null}
 
                       {/* 3. Source Cards Carousel (Perplexity Style Cards Grid) */}
                       {msg.sources && msg.sources.length > 0 && (
@@ -760,67 +781,38 @@ export default function ChatView({
                         />
                       )}
 
-                      {/* 5. Modern Action Toolbar (Copy, Try again, Thumbs Up/Down) */}
-                      {(!streaming || isLastMessage) && (msg.content || isLastMessage) && (
-                        <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
-                          <div className="flex items-center gap-3">
-                            {msg.content && (
-                              <button
-                                onClick={() => handleCopyMessage(msg.content, idx)}
-                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
-                                title="Copy response"
-                              >
-                                {copiedMsgIdx === idx ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span className="text-[11px] text-emerald-400 font-medium">Copied</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="w-3.5 h-3.5" />
-                                    <span className="text-[11px]">Copy</span>
-                                  </>
-                                )}
-                              </button>
-                            )}
+                      {/* 5. Modern Action Toolbar (Copy, Try again) - ONLY rendered AFTER message is generated */}
+                      {!streaming && msg.content && (
+                        <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleCopyMessage(msg.content, idx)}
+                              className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5 text-slate-400"
+                              title="Copy response"
+                            >
+                              {copiedMsgIdx === idx ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="text-[11px] text-emerald-400 font-medium">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span className="text-[11px]">Copy</span>
+                                </>
+                              )}
+                            </button>
 
                             {isLastMessage && (
                               <button
                                 onClick={handleRegenerate}
-                                disabled={streaming}
-                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5 disabled:opacity-50"
+                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5 text-slate-400"
                                 title="Regenerate answer"
                               >
-                                <RotateCcw className={`w-3.5 h-3.5 ${streaming ? "animate-spin text-brand-primary" : ""}`} />
-                                <span className="text-[11px]">{streaming ? "Regenerating..." : "Try again"}</span>
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span className="text-[11px]">Try again</span>
                               </button>
                             )}
-                          </div>
-
-                          {/* Feedback: Thumbs Up / Down */}
-                          <div className="flex items-center gap-1 text-slate-500">
-                            <button
-                              onClick={() => handleFeedback(msg.id || idx, "liked")}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                feedbackMap[msg.id || idx] === "liked"
-                                  ? "text-emerald-400 bg-emerald-500/10"
-                                  : "hover:text-slate-200 hover:bg-white/5"
-                              }`}
-                              title="Helpful"
-                            >
-                              <ThumbsUp className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleFeedback(msg.id || idx, "disliked")}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                feedbackMap[msg.id || idx] === "disliked"
-                                  ? "text-rose-400 bg-rose-500/10"
-                                  : "hover:text-slate-200 hover:bg-white/5"
-                              }`}
-                              title="Not helpful"
-                            >
-                              <ThumbsDown className="w-3.5 h-3.5" />
-                            </button>
                           </div>
                         </div>
                       )}

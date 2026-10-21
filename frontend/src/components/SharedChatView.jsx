@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Bot, User, Share2, Copy, Check, ArrowLeft, Loader2, Sparkles, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Bot, User, Share2, Copy, Check, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { api } from "../api";
 import MarkdownTableRenderer from "../features/Chat/MarkdownTableRenderer";
 import ResearchStatusBar from "../features/Chat/ResearchStatusBar";
@@ -13,7 +13,6 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
   const [error, setError] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [activeSourcesModal, setActiveSourcesModal] = useState(null);
-  const [feedbackMap, setFeedbackMap] = useState({});
 
   useEffect(() => {
     async function fetchSharedChat() {
@@ -35,13 +34,6 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
     navigator.clipboard.writeText(text);
     setCopiedIndex(idx);
     setTimeout(() => setCopiedIndex(null), 2000);
-  };
-
-  const handleFeedback = (msgId, type) => {
-    setFeedbackMap((prev) => ({
-      ...prev,
-      [msgId]: prev[msgId] === type ? null : type
-    }));
   };
 
   if (loading) {
@@ -185,31 +177,6 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
                         </>
                       )}
                     </button>
-
-                    <div className="flex items-center gap-1 text-slate-500">
-                      <button
-                        onClick={() => handleFeedback(msg.id || idx, "liked")}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          feedbackMap[msg.id || idx] === "liked"
-                            ? "text-emerald-400 bg-emerald-500/10"
-                            : "hover:text-slate-200 hover:bg-white/5"
-                        }`}
-                        title="Helpful"
-                      >
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleFeedback(msg.id || idx, "disliked")}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          feedbackMap[msg.id || idx] === "disliked"
-                            ? "text-rose-400 bg-rose-500/10"
-                            : "hover:text-slate-200 hover:bg-white/5"
-                        }`}
-                        title="Not helpful"
-                      >
-                        <ThumbsDown className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
                   </div>
                 </div>
               ) : (

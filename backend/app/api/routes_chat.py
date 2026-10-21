@@ -441,60 +441,64 @@ async def stream_message(
     research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if web_enabled else None)
 
     async def event_generator():
-        # 1. Send title if updated
-        if new_title:
-            yield f"event: title\ndata: {json.dumps({'title': new_title})}\n\n"
+        try:
+            # 1. Send title if updated
+            if new_title:
+                yield f"event: title\ndata: {json.dumps({'title': new_title})}\n\n"
 
-        # 2. Send research status (Perplexity style status bar)
-        research_status = f"Researched {research_query}" if research_query else "Consulted knowledge base"
-        yield f"event: research\ndata: {json.dumps({'query': research_query or user_text[:40], 'status': research_status, 'sources_count': len(citations)})}\n\n"
+            # 2. Send research status (Perplexity style status bar)
+            research_status = f"Researched {research_query}" if research_query else "Consulted knowledge base"
+            yield f"event: research\ndata: {json.dumps({'query': research_query or user_text[:40], 'status': research_status, 'sources_count': len(citations)})}\n\n"
 
-        # 3. Send rich citations
-        citations_data = [c.model_dump() for c in citations]
-        yield f"event: citations\ndata: {json.dumps(citations_data)}\n\n"
+            # 3. Send rich citations
+            citations_data = [c.model_dump() for c in citations]
+            yield f"event: citations\ndata: {json.dumps(citations_data)}\n\n"
 
-        # 4. Stream LLM tokens
-        full_answer = []
-        async for chunk in llm_service.stream_rag_response(user_text, chat_history, context):
-            full_answer.append(chunk)
-            yield f"event: chunk\ndata: {json.dumps({'chunk': chunk})}\n\n"
+            # 4. Stream LLM tokens
+            full_answer = []
+            async for chunk in llm_service.stream_rag_response(user_text, chat_history, context):
+                full_answer.append(chunk)
+                yield f"event: chunk\ndata: {json.dumps({'chunk': chunk})}\n\n"
 
-        complete_text = "".join(full_answer)
+            complete_text = "".join(full_answer)
 
-        # 5. Filter and ground citations against the synthesized answer
-        grounded_citations = rag_service.filter_and_ground_citations(citations, complete_text)
-        citations_data = [c.model_dump() for c in grounded_citations]
+            # 5. Filter and ground citations against the synthesized answer
+            grounded_citations = rag_service.filter_and_ground_citations(citations, complete_text)
+            citations_data = [c.model_dump() for c in grounded_citations]
 
-        # 6. Generate follow-up / related questions
-        related_questions = llm_service.generate_followup_questions(user_text, complete_text)
-        yield f"event: related\ndata: {json.dumps(related_questions)}\n\n"
+            # 6. Generate follow-up / related questions
+            related_questions = llm_service.generate_followup_questions(user_text, complete_text)
+            yield f"event: related\ndata: {json.dumps(related_questions)}\n\n"
 
-        # 7. Save assistant message to DB
-        save_conn = get_db_conn()
-        save_cur = save_conn.cursor()
-        save_cur.execute(
-            """
-            INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
-            VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
-            RETURNING id
-            """,
-            (
-                conversation_id,
-                user_id,
-                "assistant",
-                complete_text,
-                json.dumps(citations_data),
-                json.dumps(related_questions),
-                research_query
+            # 7. Save assistant message to DB
+            save_conn = get_db_conn()
+            save_cur = save_conn.cursor()
+            save_cur.execute(
+                """
+                INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
+                RETURNING id
+                """,
+                (
+                    conversation_id,
+                    user_id,
+                    "assistant",
+                    complete_text,
+                    json.dumps(citations_data),
+                    json.dumps(related_questions),
+                    research_query
+                )
             )
-        )
-        msg_id = str(save_cur.fetchone()[0])
-        save_cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
-        save_conn.commit()
-        save_cur.close()
-        save_conn.close()
+            msg_id = str(save_cur.fetchone()[0])
+            save_cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
+            save_conn.commit()
+            save_cur.close()
+            save_conn.close()
 
-        yield f"event: done\ndata: {json.dumps({'message_id': msg_id, 'sources': citations_data, 'related_questions': related_questions, 'research_query': research_query})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'message_id': msg_id, 'sources': citations_data, 'related_questions': related_questions, 'research_query': research_query})}\n\n"
+        except Exception as e:
+            logger.error(f"Error in stream_chat_response event_generator: {e}", exc_info=True)
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(
         event_generator(),
