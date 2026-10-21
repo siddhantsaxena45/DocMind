@@ -11,7 +11,11 @@ from app.api.routes_share import router as share_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_schema()
+    try:
+        ensure_schema()
+        print("INFO: Database schema verified and migrated successfully.")
+    except Exception as e:
+        print(f"WARNING: Database ensure_schema non-blocking notice: {e}")
     yield
 
 app = FastAPI(
