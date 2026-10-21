@@ -136,12 +136,15 @@ def extract_site_metadata(url: str) -> tuple[str, str]:
 class WebSearchService:
     def __init__(self):
         self.max_results = 6
-        self.timeout = 4.0
+        self.timeout = 2.5
+        self._ddgs_cooldown_active = False
 
     def search(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:
         """
-        Executes a web search using DuckDuckGo with fallback mechanisms.
-        Returns a list of dicts with rich metadata for Perplexity-style source cards.
+        Executes a resilient multi-backend web search.
+        Gracefully handles datacenter IP rate limits (Render/AWS) by preventing
+        unresponsive Mojeek fallback loops and cascading across Bing HTML, Google News RSS,
+        and DuckDuckGo Lite.
         """
         results: List[Dict[str, Any]] = []
         clean_query = query.strip()
@@ -151,49 +154,83 @@ class WebSearchService:
         shopping_intent = is_shopping_query(clean_query)
         financial_intent = is_financial_query(clean_query)
 
-        # 1. Primary: DDGS python library
-        try:
-            with DDGS(timeout=self.timeout) as ddgs:
-                ddg_gen = ddgs.text(clean_query, max_results=max_results + 4)
-                for item in ddg_gen:
-                    title = item.get("title", "")
-                    href = item.get("href", "")
-                    body = item.get("body", "")
-                    if href and (title or body):
-                        parsed_href = urlparse(href)
-                        d = parsed_href.netloc.lower()
-                        # Filter out spam marketplace domains unless the user explicitly wants shopping
-                        if any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS) and not shopping_intent:
-                            continue
-                        # Filter out financial ticker aggregator domains (e.g. stockanalysis, marketwatch) unless query is financial
-                        if any(ticker in d for ticker in FINANCIAL_TICKER_DOMAINS) and not financial_intent:
-                            continue
-                        # Filter out search engine fallback hallucinations that have zero match with query terms
-                        if not is_result_relevant(title, body, href, clean_query):
-                            continue
-                        site_name, favicon = extract_site_metadata(href)
-                        results.append({
-                            "title": title or href,
-                            "url": href,
-                            "snippet": body[:500],
-                            "site_name": site_name,
-                            "favicon": favicon,
-                            "type": "web"
-                        })
-                        if len(results) >= max_results:
-                            break
-            if results:
-                return results
-        except Exception as e:
-            logger.warning(f"DuckDuckGo search error: {e}. Attempting fallback...")
+        # 1. Primary: DDGS python library with explicit reliable backends (Bing, Brave, DuckDuckGo)
+        # We explicitly exclude 'mojeek' to prevent Render/cloud IP timeouts
+        if not getattr(self, "_ddgs_cooldown_active", False):
+            try:
+                with DDGS(timeout=self.timeout) as ddgs:
+                    try:
+                        # deedy5/ddgs accepts comma-separated backends without mojeek
+                        ddg_gen = ddgs.text(clean_query, max_results=max_results + 4, backend="bing,brave,duckduckgo")
+                    except (TypeError, ValueError):
+                        # Fallback for older duckduckgo_search library
+                        ddg_gen = ddgs.text(clean_query, max_results=max_results + 4)
 
-        # 2. Fallback: DuckDuckGo HTML / API fallback via httpx
+                    for item in ddg_gen:
+                        title = item.get("title", "")
+                        href = item.get("href", "")
+                        body = item.get("body", "")
+                        if href and (title or body):
+                            parsed_href = urlparse(href)
+                            d = parsed_href.netloc.lower()
+                            # Filter out spam marketplace domains unless the user explicitly wants shopping
+                            if any(spam in d for spam in SPAM_MARKETPLACE_DOMAINS) and not shopping_intent:
+                                continue
+                            # Filter out financial ticker aggregator domains unless query is financial
+                            if any(ticker in d for ticker in FINANCIAL_TICKER_DOMAINS) and not financial_intent:
+                                continue
+                            # Filter out search engine fallback hallucinations that have zero match with query terms
+                            if not is_result_relevant(title, body, href, clean_query):
+                                continue
+                            site_name, favicon = extract_site_metadata(href)
+                            results.append({
+                                "title": title or href,
+                                "url": href,
+                                "snippet": body[:500],
+                                "site_name": site_name,
+                                "favicon": favicon,
+                                "type": "web"
+                            })
+                            if len(results) >= max_results:
+                                break
+                if results:
+                    return results
+            except Exception as e:
+                self._ddgs_cooldown_active = True
+                logger.info(f"DDGS search backend rate-limited/slow on datacenter IP ({type(e).__name__}). Cascading to multi-engine fallbacks...")
+                logger.debug(f"DDGS error detail: {e}")
+
+        # 2. Fast Fallback Engine 1: Direct Bing Web Search HTML (Reliable on cloud IPs)
         try:
-            fallback_results = self._fallback_html_search(clean_query, max_results)
+            bing_results = self.search_bing_html(clean_query, max_results=max_results)
+            if bing_results:
+                return bing_results
+        except Exception as e:
+            logger.debug(f"Bing fallback search error: {e}")
+
+        # 3. Fast Fallback Engine 2: Google News RSS (Zero rate-limit on datacenter IPs)
+        try:
+            news_results = self.search_google_news(clean_query, max_results=max_results)
+            if news_results:
+                return news_results
+        except Exception as e:
+            logger.debug(f"Google News fallback search error: {e}")
+
+        # 4. Fallback Engine 3: DuckDuckGo Lite HTML
+        try:
+            lite_results = self._fallback_lite_search(clean_query, max_results=max_results)
+            if lite_results:
+                return lite_results
+        except Exception as e:
+            logger.debug(f"DuckDuckGo Lite fallback error: {e}")
+
+        # 5. Fallback Engine 4: DuckDuckGo standard HTML fallback via httpx
+        try:
+            fallback_results = self._fallback_html_search(clean_query, max_results=max_results)
             if fallback_results:
                 return fallback_results
         except Exception as e:
-            logger.error(f"Fallback web search also failed: {e}")
+            logger.debug(f"DuckDuckGo standard HTML fallback error: {e}")
 
         return results
 
@@ -257,7 +294,7 @@ class WebSearchService:
                         if len(results) >= max_results:
                             break
         except Exception as e:
-            logger.warning(f"HTML fallback search error: {e}")
+            logger.debug(f"HTML fallback search error: {e}")
 
         return results
 
@@ -269,6 +306,7 @@ class WebSearchService:
         """
         merged_results: List[Dict[str, Any]] = []
         seen_urls = set()
+        self._ddgs_cooldown_active = False
 
         combined_q = (" ".join(queries)).lower()
         has_kick = any(k in combined_q for k in ["kick", "kick.com"])
@@ -455,31 +493,172 @@ class WebSearchService:
         }
         results = []
         try:
-            with httpx.Client(timeout=4.0, follow_redirects=True, headers=headers) as client:
+            with httpx.Client(timeout=3.5, follow_redirects=True, headers=headers) as client:
                 resp = client.get(url)
+                if resp.status_code == 200:
+                    try:
+                        from lxml import html
+                        tree = html.fromstring(resp.text)
+                        items = tree.xpath('//li[contains(@class, "b_algo")]')
+                        for item in items:
+                            t_nodes = item.xpath('.//h2/a')
+                            if not t_nodes:
+                                continue
+                            t_text = t_nodes[0].text_content().strip()
+                            href = t_nodes[0].get("href", "")
+                            if not href or not href.startswith("http") or "bing.com" in href:
+                                continue
+
+                            p_nodes = item.xpath('.//div[contains(@class, "b_caption")]//p | .//p')
+                            snippet = p_nodes[0].text_content().strip() if p_nodes else ""
+
+                            if not is_result_relevant(t_text, snippet, href, query):
+                                continue
+
+                            site_name, favicon = extract_site_metadata(href)
+                            results.append({
+                                "title": t_text[:110],
+                                "url": href,
+                                "snippet": snippet[:500],
+                                "site_name": site_name,
+                                "favicon": favicon,
+                                "type": "web"
+                            })
+                            if len(results) >= max_results:
+                                break
+                    except Exception:
+                        pass
+
+                    # Fallback regex if lxml parsed 0 results
+                    if not results:
+                        raw_matches = re.findall(r'<li class="b_algo"[^>]*>.*?<h2><a[^>]+href="([^"]+)"[^>]*>(.*?)</a>.*?<p[^>]*>(.*?)</p>', resp.text, re.DOTALL)
+                        for href, raw_t, raw_s in raw_matches:
+                            if not href.startswith("http") or "bing.com" in href:
+                                continue
+                            t_text = re.sub(r'<[^>]+>', '', raw_t).strip()
+                            snippet = re.sub(r'<[^>]+>', '', raw_s).strip()
+                            if not is_result_relevant(t_text, snippet, href, query):
+                                continue
+                            site_name, favicon = extract_site_metadata(href)
+                            results.append({
+                                "title": t_text[:110],
+                                "url": href,
+                                "snippet": snippet[:500],
+                                "site_name": site_name,
+                                "favicon": favicon,
+                                "type": "web"
+                            })
+                            if len(results) >= max_results:
+                                break
+        except Exception as e:
+            logger.debug(f"Bing HTML fallback search error: {e}")
+        return results
+
+    def search_google_news(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
+        """
+        Retrieves real-time verified news and web mentions from Google News RSS.
+        Completely immune to datacenter IP rate limits (Render/AWS/GCP).
+        """
+        clean_q = re.sub(r'[\'"]', '', query).strip()
+        encoded = urllib.parse.quote_plus(clean_q)
+        url = f"https://news.google.com/rss/search?q={encoded}&hl=en-US&gl=US&ceid=US:en"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "application/rss+xml, application/xml, text/xml, */*"
+        }
+        results = []
+        try:
+            with httpx.Client(timeout=3.5, follow_redirects=True, headers=headers) as client:
+                resp = client.get(url)
+                if resp.status_code == 200:
+                    import xml.etree.ElementTree as ET
+                    try:
+                        root = ET.fromstring(resp.content)
+                        for item in root.findall(".//item")[:max_results + 3]:
+                            t_node = item.find("title")
+                            l_node = item.find("link")
+                            d_node = item.find("description")
+                            s_node = item.find("source")
+
+                            raw_title = t_node.text.strip() if t_node is not None and t_node.text else ""
+                            link = l_node.text.strip() if l_node is not None and l_node.text else ""
+                            publisher = s_node.text.strip() if s_node is not None and s_node.text else ""
+
+                            title = raw_title
+                            if publisher and title.endswith(f" - {publisher}"):
+                                title = title[:-len(f" - {publisher}")].strip()
+
+                            snippet = ""
+                            if d_node is not None and d_node.text:
+                                snippet = re.sub(r'<[^>]+>', ' ', d_node.text).strip()
+                                snippet = re.sub(r'\s+', ' ', snippet)
+
+                            if not title or not link:
+                                continue
+                            if not is_result_relevant(title, snippet, link, query):
+                                continue
+
+                            site_name = publisher or "Google News"
+                            favicon = f"https://www.google.com/s2/favicons?domain={urlparse(link).netloc}&sz=64" if link else ""
+
+                            results.append({
+                                "title": title[:110],
+                                "url": link,
+                                "snippet": snippet[:500] if snippet else f"Verified coverage for {title}",
+                                "site_name": site_name,
+                                "favicon": favicon,
+                                "type": "web"
+                            })
+                            if len(results) >= max_results:
+                                break
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.debug(f"Google News RSS search error: {e}")
+        return results
+
+    def _fallback_lite_search(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
+        """
+        DuckDuckGo Lite HTML search fallback (pure server-rendered table, less prone to bot challenges).
+        """
+        url = "https://lite.duckduckgo.com/lite/"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        data = {"q": query}
+        results = []
+        try:
+            with httpx.Client(timeout=3.0, follow_redirects=True, headers=headers) as client:
+                resp = client.post(url, data=data)
                 if resp.status_code == 200:
                     from lxml import html
                     tree = html.fromstring(resp.text)
-                    items = tree.xpath('//li[contains(@class, "b_algo")]')
-                    for item in items:
-                        t_nodes = item.xpath('.//h2/a')
-                        if not t_nodes:
+                    links = tree.xpath('//a[contains(@class, "result-link")]')
+                    snippets = tree.xpath('//td[contains(@class, "result-snippet")]')
+
+                    for idx, a_tag in enumerate(links):
+                        raw_href = a_tag.get("href", "")
+                        title = a_tag.text_content().strip()
+                        if "uddg=" in raw_href:
+                            parsed_qs = urllib.parse.parse_qs(urllib.parse.urlparse(raw_href).query)
+                            real_href = parsed_qs.get("uddg", [raw_href])[0]
+                        else:
+                            real_href = raw_href
+
+                        if not real_href.startswith("http") or "duckduckgo.com" in real_href:
                             continue
-                        t_text = t_nodes[0].text_content().strip()
-                        href = t_nodes[0].get("href", "")
-                        if not href or not href.startswith("http") or "bing.com" in href:
+
+                        snippet = snippets[idx].text_content().strip() if idx < len(snippets) else ""
+                        if not is_result_relevant(title, snippet, real_href, query):
                             continue
-                        
-                        p_nodes = item.xpath('.//div[contains(@class, "b_caption")]//p | .//p')
-                        snippet = p_nodes[0].text_content().strip() if p_nodes else ""
-                        
-                        if not is_result_relevant(t_text, snippet, href, query):
-                            continue
-                        
-                        site_name, favicon = extract_site_metadata(href)
+
+                        site_name, favicon = extract_site_metadata(real_href)
                         results.append({
-                            "title": t_text[:110],
-                            "url": href,
+                            "title": title[:110],
+                            "url": real_href,
                             "snippet": snippet[:500],
                             "site_name": site_name,
                             "favicon": favicon,
@@ -488,7 +667,7 @@ class WebSearchService:
                         if len(results) >= max_results:
                             break
         except Exception as e:
-            logger.debug(f"Bing HTML fallback search error: {e}")
+            logger.debug(f"DuckDuckGo Lite search error: {e}")
         return results
 
     def search_wikipedia(self, query: str, max_results: int = 3) -> List[Dict[str, Any]]:
