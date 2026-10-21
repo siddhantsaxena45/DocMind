@@ -525,6 +525,205 @@ class RAGService:
         full_context = "\n\n".join(context_parts) if context_parts else "No specific documents or web results found."
         return full_context, citations, search_topic
 
+    def filter_and_ground_citations(
+        self,
+        citations: List[Citation],
+        answer_text: str
+    ) -> List[Citation]:
+        """
+        Gounds and filters citations against the LLM's actual generated answer.
+        Identifies precisely which documents and web results were cited or utilized
+        in the synthesis, orders them by their appearance in the text, and assigns
+        them sequential 1-based citation index badges [1], [2], etc.
+        """
+        if not citations:
+            return []
+        if not answer_text or not answer_text.strip():
+            # If no answer text, mark all as unused
+            res = []
+            for c in citations:
+                c_copy = c.model_copy()
+                c_copy.index = None
+                c_copy.used_in_answer = False
+                res.append(c_copy)
+            return res
+
+        answer_lower = answer_text.lower()
+
+        # 1. Extract all markdown links and bare URLs from answer
+        md_links = re.findall(r'\[([^\]]+)\]\((https?://[^\s)]+)\)', answer_text, re.IGNORECASE)
+        bare_urls = re.findall(r'https?://[^\s)\]"\'>]+', answer_text, re.IGNORECASE)
+        cited_urls = set()
+        for _, u in md_links:
+            cited_urls.add(u.strip().rstrip("/"))
+        for u in bare_urls:
+            cited_urls.add(u.strip().rstrip("/"))
+
+        # 2. Extract reference tags from context
+        web_ref_nums = set(re.findall(r'\[\[?WEB_REF_(\d+)\]?\]', answer_text, re.IGNORECASE))
+        live_ref_nums = set(re.findall(r'\[\[?LIVE_LINK_(\d+)\]?\]', answer_text, re.IGNORECASE))
+        doc_ref_nums = set(re.findall(r'\[\[?DOCUMENT_REF_(\d+)\]?\]', answer_text, re.IGNORECASE))
+
+        # 3. Extract bracketed citation numbers like [1], [2], [3]
+        numbered_citations = set(re.findall(r'(?<!\w)\[(\d{1,2})\](?!\w)', answer_text))
+
+        # Check document citations [Doc: filename, Page X]
+        doc_cites = re.findall(r'\[Doc:\s*([^,\]]+)(?:,\s*Page\s*(\d+))?\]', answer_text, re.IGNORECASE)
+
+        def normalize_url(url: Optional[str]) -> str:
+            if not url:
+                return ""
+            u = url.lower().strip().rstrip("/")
+            u = re.sub(r'^https?://', '', u)
+            u = re.sub(r'^www\.', '', u)
+            return u
+
+        normalized_cited_urls = {normalize_url(u) for u in cited_urls}
+
+        used_matches = []
+        unused_citations = []
+
+        is_negative_finding = any(
+            phrase in answer_lower
+            for phrase in [
+                "does not exist", "not found", "cannot be found", "zero relevant",
+                "no discoverable", "unrelated fallback", "no public record", "insufficient evidence"
+            ]
+        )
+
+        for idx, c in enumerate(citations, start=1):
+            is_used = False
+            first_pos = 9999999
+
+            c_url_norm = normalize_url(c.url)
+
+            # Check direct URL match
+            if c_url_norm:
+                for cited_u in normalized_cited_urls:
+                    if c_url_norm in cited_u or cited_u in c_url_norm:
+                        is_used = True
+                        pos = answer_lower.find(c_url_norm)
+                        if pos != -1 and pos < first_pos:
+                            first_pos = pos
+
+            # Check [[WEB_REF_X]] marker
+            if str(idx) in web_ref_nums:
+                is_used = True
+                pos = answer_text.find(f"WEB_REF_{idx}")
+                if pos != -1 and pos < first_pos:
+                    first_pos = pos
+
+            # Check [[LIVE_LINK_X]] marker
+            if str(idx) in live_ref_nums:
+                is_used = True
+                pos = answer_text.find(f"LIVE_LINK_{idx}")
+                if pos != -1 and pos < first_pos:
+                    first_pos = pos
+
+            # Check [X] numbered citation badge matching this 1-based source
+            if str(idx) in numbered_citations:
+                is_used = True
+                pos = answer_text.find(f"[{idx}]")
+                if pos != -1 and pos < first_pos:
+                    first_pos = pos
+
+            # Check document tag or doc cite match
+            if c.type == "doc":
+                if str(idx) in doc_ref_nums:
+                    is_used = True
+                    pos = answer_text.find(f"DOCUMENT_REF_{idx}")
+                    if pos != -1 and pos < first_pos:
+                        first_pos = pos
+                elif c.site_name and c.site_name.lower() in answer_lower:
+                    is_used = True
+                    pos = answer_lower.find(c.site_name.lower())
+                    if pos != -1 and pos < first_pos:
+                        first_pos = pos
+                elif any(c.site_name and c.site_name.lower() in dc[0].lower() for dc in doc_cites):
+                    is_used = True
+                    first_pos = min(first_pos, 500)
+
+            # Check distinctive site name (e.g., YouTube, Reddit, GitHub, Wikipedia)
+            if not is_used and c.site_name and len(c.site_name) > 3:
+                site_lower = c.site_name.lower()
+                generic_names = ["web", "web source", "document", "google", "search", "verified link"]
+                if site_lower not in generic_names:
+                    if site_lower in answer_lower:
+                        is_used = True
+                        pos = answer_lower.find(site_lower)
+                        if pos != -1 and pos < first_pos:
+                            first_pos = pos
+
+            # Check distinctive title terms (e.g. "Techno Gamerz", "SidCode")
+            if not is_used and c.title and len(c.title) > 6:
+                clean_title = re.sub(r'\(.*?\)', '', c.title).strip().lower()
+                clean_title = re.sub(r'[^\w\s]', '', clean_title).strip()
+                if len(clean_title) > 8 and clean_title in answer_lower:
+                    is_used = True
+                    pos = answer_lower.find(clean_title)
+                    if pos != -1 and pos < first_pos:
+                        first_pos = pos
+
+            # Spam marketplace guard: NEVER treat AliExpress / Temu as used unless the query was shopping
+            if c.url and any(bad in c.url.lower() for bad in ["aliexpress.com", "temu.com", "alibaba.com"]):
+                if is_negative_finding or "aliexpress" not in answer_lower:
+                    is_used = False
+
+            if is_used:
+                used_matches.append((first_pos, c))
+            else:
+                unused_citations.append(c)
+
+        # Case A: We have confirmed grounded citations
+        if used_matches:
+            # Sort by appearance in answer
+            used_matches.sort(key=lambda x: x[0])
+            ordered_used = []
+            for i, (_, cit) in enumerate(used_matches, start=1):
+                cit_copy = cit.model_copy()
+                cit_copy.index = i
+                cit_copy.used_in_answer = True
+                ordered_used.append(cit_copy)
+
+            ordered_unused = []
+            for cit in unused_citations:
+                cit_copy = cit.model_copy()
+                cit_copy.index = None
+                cit_copy.used_in_answer = False
+                ordered_unused.append(cit_copy)
+
+            return ordered_used + ordered_unused
+
+        # Case B: If answer is stating the entity was NOT found or doesn't exist, do not force any sources
+        if is_negative_finding:
+            res = []
+            for cit in citations:
+                cit_copy = cit.model_copy()
+                cit_copy.index = None
+                cit_copy.used_in_answer = False
+                res.append(cit_copy)
+            return res
+
+        # Case C: Positive synthesis without explicit markdown links: mark top 2-3 clean sources
+        fallback_used = []
+        fallback_unused = []
+        clean_count = 0
+        for cit in citations:
+            is_spam = cit.url and any(bad in cit.url.lower() for bad in ["aliexpress.com", "temu.com", "alibaba.com"])
+            cit_copy = cit.model_copy()
+            if not is_spam and clean_count < 3:
+                clean_count += 1
+                cit_copy.index = clean_count
+                cit_copy.used_in_answer = True
+                fallback_used.append(cit_copy)
+            else:
+                cit_copy.index = None
+                cit_copy.used_in_answer = False
+                fallback_unused.append(cit_copy)
+
+        return fallback_used + fallback_unused
+
 rag_service = RAGService()
+
 
 

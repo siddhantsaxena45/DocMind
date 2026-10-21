@@ -2,7 +2,50 @@ import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Copy, ExternalLink, Sparkles } from "lucide-react";
+import { Check, Copy, ExternalLink, Sparkles, Globe, FileText } from "lucide-react";
+
+/**
+ * Renders citation badges [1], [2] or styled links.
+ */
+function renderCitationLink(href, children) {
+  const text = String(children || "").trim();
+  const citeMatch = text.match(/^(?:\[?WEB_REF_)?(\d+)\]?$/i) || text.match(/^\[?LIVE_LINK_(\d+)\]?$/i);
+
+  if (citeMatch) {
+    const num = citeMatch[1];
+    return (
+      <a
+        href={href || `#source-card-${num}`}
+        target={href && href.startsWith("http") ? "_blank" : "_self"}
+        rel="noopener noreferrer"
+        onClick={() => {
+          const card = document.getElementById(`source-card-${num}`);
+          if (card) {
+            card.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            card.classList.add("ring-2", "ring-cyan-400");
+            setTimeout(() => card.classList.remove("ring-2", "ring-cyan-400"), 2000);
+          }
+        }}
+        className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 mx-0.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 hover:text-cyan-100 border border-cyan-500/40 text-[10px] font-bold font-mono transition-all no-underline shadow-xs hover:scale-110 align-baseline cursor-pointer"
+        title={href || `Source [${num}]`}
+      >
+        {num}
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline underline-offset-2 font-medium break-all"
+    >
+      <span>{children}</span>
+      <ExternalLink className="w-2.5 h-2.5 inline shrink-0 opacity-70" />
+    </a>
+  );
+}
 
 /**
  * Parses inline markdown for table cells (bold, links, code, italic).
@@ -20,17 +63,7 @@ function InlineCell({ text }) {
             {children}
           </code>
         ),
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-brand-secondary hover:underline inline-flex items-center gap-0.5"
-          >
-            {children}
-            <ExternalLink className="w-2.5 h-2.5 inline" />
-          </a>
-        )
+        a: ({ href, children }) => renderCitationLink(href, children)
       }}
     >
       {text}
@@ -240,19 +273,7 @@ export default function MarkdownTableRenderer({ content, messageIdx = 0 }) {
                     </code>
                   );
                 },
-                a({ href, children }) {
-                  return (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline underline-offset-2 font-medium"
-                    >
-                      {children}
-                      <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />
-                    </a>
-                  );
-                }
+                a: ({ href, children }) => renderCitationLink(href, children)
               }}
             >
               {block.text}

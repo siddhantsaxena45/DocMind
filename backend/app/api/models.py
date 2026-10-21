@@ -51,6 +51,8 @@ class Citation(BaseModel):
     site_name: Optional[str] = None
     favicon: Optional[str] = None
     date: Optional[str] = None
+    index: Optional[int] = None
+    used_in_answer: bool = True
 
 # Messages
 class MessageItem(BaseModel):

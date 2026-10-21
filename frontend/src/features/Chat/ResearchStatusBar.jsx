@@ -8,9 +8,16 @@ export default function ResearchStatusBar({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Group or gather unique favicons
-  const webSources = sources.filter((s) => s.type === "web");
-  const docSources = sources.filter((s) => s.type === "doc");
+  // Distinguish used vs candidate sources
+  const hasExplicitFlags = sources.some((s) => s.used_in_answer !== undefined);
+  const usedSources = hasExplicitFlags
+    ? sources.filter((s) => s.used_in_answer === true)
+    : sources;
+
+  const displaySources = usedSources.length > 0 ? usedSources : sources;
+
+  const webSources = displaySources.filter((s) => s.type === "web");
+  const docSources = displaySources.filter((s) => s.type === "doc");
 
   const favicons = webSources
     .map((s) => s.favicon)
@@ -63,11 +70,9 @@ export default function ResearchStatusBar({
               )}
             </div>
 
-            {sources.length > 3 && (
-              <span className="text-[10px] font-semibold text-slate-400 bg-slate-800 ring-1 ring-white/10 rounded-full px-1.5 py-0.5">
-                +{sources.length - Math.min(3, favicons.length)}
-              </span>
-            )}
+            <span className="text-[10px] font-semibold text-cyan-300 bg-cyan-950/60 ring-1 ring-cyan-500/30 rounded-full px-2 py-0.5">
+              {usedSources.length > 0 ? `${usedSources.length} cited` : `${sources.length} sources`}
+            </span>
           </div>
         )}
       </button>
@@ -83,27 +88,33 @@ export default function ResearchStatusBar({
           <div className="space-y-1 pl-4 border-l border-white/10 my-2">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Extracted research intent and distilled query</span>
+              <span>Extracted research intent and targeted real-time sources</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-              <span>Retrieved {sources.length} sources across web and attached documents</span>
+              <span>Retrieved and inspected {sources.length} candidate references</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-              <span>Synthesized grounded analytical response</span>
+              <span>
+                {usedSources.length > 0
+                  ? `Synthesized answer grounded in ${usedSources.length} verified cited sources`
+                  : "Verified results (no relevant public records matched query)"}
+              </span>
             </div>
           </div>
 
           {sources.length > 0 && (
             <div className="flex items-center justify-between pt-1">
               <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
-                {sources.length} Sources Consulted
+                {usedSources.length > 0
+                  ? `${usedSources.length} Sources Cited (${sources.length} Evaluated)`
+                  : `${sources.length} Sources Evaluated`}
               </span>
               {onOpenAllSources && (
                 <button
                   onClick={onOpenAllSources}
-                  className="text-brand-secondary hover:text-white transition-colors font-medium flex items-center gap-1"
+                  className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium flex items-center gap-1"
                 >
                   View full source details <ExternalLink className="w-2.5 h-2.5" />
                 </button>

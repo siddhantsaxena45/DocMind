@@ -252,6 +252,7 @@ export default function ChatView({
                     updated[lastIdx] = {
                       ...updated[lastIdx],
                       id: parsed.message_id,
+                      sources: parsed.sources || updated[lastIdx].sources,
                       related_questions: parsed.related_questions || updated[lastIdx].related_questions || [],
                       research_query: parsed.research_query || updated[lastIdx].research_query
                     };

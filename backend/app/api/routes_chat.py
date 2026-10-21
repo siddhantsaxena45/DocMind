@@ -304,8 +304,9 @@ def send_message(
     # 7. Generate follow-up / related questions (Perplexity style)
     related_questions = llm_service.generate_followup_questions(user_text, answer)
 
-    # 8. Save assistant message with citations, related questions, and research query
-    citations_data = [c.model_dump() for c in citations]
+    # 8. Filter and ground citations against the synthesized answer
+    grounded_citations = rag_service.filter_and_ground_citations(citations, answer)
+    citations_data = [c.model_dump() for c in grounded_citations]
     cur.execute(
         """
         INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
@@ -332,7 +333,7 @@ def send_message(
     return SendMessageResponse(
         message_id=assistant_msg_id,
         answer=answer,
-        sources=citations,
+        sources=grounded_citations,
         related_questions=related_questions,
         research_query=research_query,
         conversation_id=conversation_id
@@ -460,11 +461,15 @@ async def stream_message(
 
         complete_text = "".join(full_answer)
 
-        # 5. Generate follow-up / related questions
+        # 5. Filter and ground citations against the synthesized answer
+        grounded_citations = rag_service.filter_and_ground_citations(citations, complete_text)
+        citations_data = [c.model_dump() for c in grounded_citations]
+
+        # 6. Generate follow-up / related questions
         related_questions = llm_service.generate_followup_questions(user_text, complete_text)
         yield f"event: related\ndata: {json.dumps(related_questions)}\n\n"
 
-        # 6. Save assistant message to DB
+        # 7. Save assistant message to DB
         save_conn = get_db_conn()
         save_cur = save_conn.cursor()
         save_cur.execute(
@@ -489,7 +494,7 @@ async def stream_message(
         save_cur.close()
         save_conn.close()
 
-        yield f"event: done\ndata: {json.dumps({'message_id': msg_id, 'related_questions': related_questions, 'research_query': research_query})}\n\n"
+        yield f"event: done\ndata: {json.dumps({'message_id': msg_id, 'sources': citations_data, 'related_questions': related_questions, 'research_query': research_query})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -574,7 +579,8 @@ def regenerate_response(
 
     related_questions = llm_service.generate_followup_questions(user_text, answer)
 
-    citations_data = [c.model_dump() for c in citations]
+    grounded_citations = rag_service.filter_and_ground_citations(citations, answer)
+    citations_data = [c.model_dump() for c in grounded_citations]
     cur.execute(
         """
         INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
@@ -600,7 +606,7 @@ def regenerate_response(
     return SendMessageResponse(
         message_id=assistant_msg_id,
         answer=answer,
-        sources=citations,
+        sources=grounded_citations,
         related_questions=related_questions,
         research_query=research_query,
         conversation_id=conversation_id
