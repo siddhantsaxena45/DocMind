@@ -411,6 +411,19 @@ class RAGService:
                         if past_u not in extracted_doc_links and not past_u.startswith("mailto:"):
                             extracted_doc_links.append(past_u)
 
+        # Discard false-positive library names or glued action verbs from extracted document links
+        # (Guards even already-uploaded documents in the database against legacy BuiltSidCode.AI / Socket.io)
+        sanitized_doc_links = []
+        for l in extracted_doc_links:
+            l_lower = l.lower()
+            l_no_proto = re.sub(r'^https?://', '', l_lower).rstrip('/')
+            if l_no_proto in ["socket.io", "builtsidcode.ai", "node.js", "react.js", "express.js", "sidcode.ai"]:
+                continue
+            if any(l_no_proto.startswith(v) and "sidcode" in l_no_proto for v in ["built", "created", "using"]):
+                continue
+            sanitized_doc_links.append(l)
+        extracted_doc_links = sanitized_doc_links
+
         if enable_web_search:
             is_verification = is_verification_query(query)
 

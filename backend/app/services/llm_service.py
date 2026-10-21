@@ -108,6 +108,11 @@ CORE OPERATIONAL RULES:
        | Claim in Document | Live Link / Web Evidence | Verification Status |
        | :--- | :--- | :--- |
      * **Key takeaway**: Overall credibility, confirmation of matching claims, and authenticity.
+6. HYPERLINK ACCURACY & TECHNICAL SKILLS HYGIENE:
+   - Technical libraries, frameworks, tools, and protocols (e.g. Socket.io, Node.js, React.js, Express.js, Next.js, FastAPI, Tailwind CSS) are TECHNICAL SKILLS, NOT candidate URLs or personal project links.
+   - Project titles, platform brands, or sentences with dots (such as 'Built SidCode.AI' or 'SidCode.AI') are PROJECT NAMES, NOT external web URLs unless an explicit clickable link was provided.
+   - NEVER criticize a candidate, deduct points, or report "PDF Hyperlink Hygiene" / "Formatting Bug" for technology names or project titles.
+   - Only evaluate candidate links for actual deployments, GitHub repositories, and verified professional profiles (GitHub, LinkedIn, LeetCode, portfolio).
 """
 
 def is_verification_query(query: str) -> bool:

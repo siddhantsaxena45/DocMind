@@ -12,8 +12,33 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings, api_key_rotator
 
 
+# Technologies, libraries, frameworks, abbreviations, or common false-positive words that end in TLD-like extensions
+FALSE_POSITIVE_URL_TERMS = {
+    # Node / JS / Web libraries & frameworks
+    "socket.io", "socketio", "node.js", "react.js", "vue.js", "next.js", "express.js",
+    "three.js", "chart.js", "d3.js", "moment.js", "redux.js", "nuxt.js", "nest.js",
+    "gatsby.js", "electron.js", "p5.js", "fabric.js", "phaser.js", "anime.js",
+    "day.js", "date.io", "engine.io", "import.io", "draw.io", "tailwind.css",
+    "bootstrap.css", "bulma.css",
+    # Abbreviations & generic terms
+    "e.g.", "i.e.", "etc.", "vs.", "al.", "approx.", "dept.", "inst.",
+    # Common words or project titles
+    "sidcode.ai", "builtsidcode.ai", "claude.ai", "chatgpt.com", "openai.com"
+}
+
+ACTION_VERB_PREFIXES = (
+    "built", "created", "developed", "engineered", "designed", "implemented",
+    "architected", "deployed", "maintained", "authored", "launched", "scaled",
+    "led", "managed", "founded", "using", "with", "from", "at", "by", "for", "in", "on"
+)
+
 URL_REGEX = re.compile(
-    r'(?:https?://[^\s<>"\'\(\)]+|www\.[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}[^\s<>"\'\(\)]*|[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*\.(?:ai|com|org|io|dev|app|net|co|in|edu|gov|me|xyz)(?:/[^\s<>"\'\(\)]*)?|(?:github\.com|linkedin\.com/in|leetcode\.com|kaggle\.com|huggingface\.co)/[a-zA-Z0-9_.\-]+(?:/[a-zA-Z0-9_.\-]+)*)',
+    r'(?:https?://[^\s<>"\'\(\)]+'
+    r'|www\.[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}[^\s<>"\'\(\)]*'
+    r'|(?:github\.com|linkedin\.com/in|leetcode\.com|kaggle\.com|huggingface\.co)/[a-zA-Z0-9_.\-]+(?:/[a-zA-Z0-9_.\-]+)*'
+    r'|[a-zA-Z0-9.\-]+\.(?:vercel\.app|netlify\.app|github\.io|pages\.dev|render\.com|herokuapp\.com|railway\.app|fly\.dev)(?:/[^\s<>"\'\(\)]*)?'
+    r'|[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)+\.(?:com|org|net|edu|gov)(?:/[^\s<>"\'\(\)]+)'
+    r')',
     re.IGNORECASE
 )
 
@@ -28,21 +53,52 @@ def clean_url(url: Optional[str]) -> Optional[str]:
     u = url.strip().rstrip(".,;!?:)'\"]}>")
     if not u:
         return None
+
+    # Check false-positive library names or project names
+    u_lower = u.lower()
+    u_no_proto = re.sub(r'^https?://', '', u_lower).rstrip('/')
+    if u_no_proto in FALSE_POSITIVE_URL_TERMS or u_lower in FALSE_POSITIVE_URL_TERMS:
+        return None
+
+    # Check for action verbs glued to domain text (e.g. "BuiltSidCode.AI")
+    for verb in ACTION_VERB_PREFIXES:
+        if u_no_proto.startswith(verb) and len(u_no_proto) > len(verb):
+            remainder = u_no_proto[len(verb):]
+            if remainder.startswith(("sidcode", ".", "-", "_")) or remainder[0].isupper():
+                return None
+
     if u.startswith("www."):
-        u = "https://" + u
-    elif re.search(r'^[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*\.(?:ai|com|org|io|dev|app|net|co|in|edu|gov|me|xyz)(?:/.*)?$', u, re.IGNORECASE):
         u = "https://" + u
     elif any(u.lower().startswith(prefix) for prefix in ["github.com", "linkedin.com", "leetcode.com", "kaggle.com", "huggingface.co"]):
         u = "https://" + u
+    elif re.search(r'^[a-zA-Z0-9.\-]+\.(?:vercel\.app|netlify\.app|github\.io|pages\.dev|render\.com|herokuapp\.com|railway\.app|fly\.dev)(?:/.*)?$', u, re.IGNORECASE):
+        u = "https://" + u
+    elif re.search(r'^[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)+\.(?:com|org|net|edu|gov)/[^\s]+$', u, re.IGNORECASE):
+        u = "https://" + u
+
     if not (u.startswith("http://") or u.startswith("https://") or u.startswith("mailto:")):
         return None
+
+    # Final domain sanity check
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(u)
+        net = parsed.netloc.lower()
+        if net in FALSE_POSITIVE_URL_TERMS:
+            return None
+        for verb in ACTION_VERB_PREFIXES:
+            if net.startswith(verb) and len(net) > len(verb) and (net.endswith(".ai") or net.endswith(".io")):
+                return None
+    except Exception:
+        pass
+
     return u
 
 
 def extract_urls_from_text(text: str) -> List[str]:
     """
     Extracts Markdown links, HTTP/HTTPS URLs, www links, and platform handles (GitHub, LinkedIn, LeetCode)
-    from raw or formatted text.
+    from raw or formatted text. Filters out false-positive technology names (e.g. Socket.io).
     """
     found: List[str] = []
     if not text:
@@ -84,6 +140,9 @@ class DocumentService:
 
         for idx, page in enumerate(pdf_reader.pages, start=1):
             page_text = page.extract_text() or ""
+            # Fix PDF kerning / font switch space loss between common action verbs and capitalized words (e.g. "BuiltSidCode" -> "Built SidCode")
+            for verb in ["Built", "Created", "Developed", "Engineered", "Designed", "Implemented", "Architected", "Deployed", "Using", "With", "Led", "Managed"]:
+                page_text = re.sub(rf'\b({verb})([A-Z][a-zA-Z0-9])', r'\1 \2', page_text)
             page_links: List[str] = []
 
             # 1. Extract PDF Annotations (/Link -> /A -> /URI)
