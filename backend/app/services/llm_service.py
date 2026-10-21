@@ -87,9 +87,33 @@ def is_verification_query(query: str) -> bool:
 
 
 class LLMService:
-    def _get_llm(self, api_key: str, streaming: bool = False, temperature: float = 0.3):
+    def __init__(self):
+        raw_candidates = [
+            settings.GEMINI_MODEL,
+            "gemini-3.8-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+        ]
+        seen = set()
+        self.candidate_models = [m for m in raw_candidates if m and not (m in seen or seen.add(m))]
+        self.active_model_idx = 0
+
+    @property
+    def current_model(self) -> str:
+        return self.candidate_models[self.active_model_idx % len(self.candidate_models)]
+
+    def _switch_to_next_model(self, failed_model: str):
+        if len(self.candidate_models) > 1 and failed_model == self.current_model:
+            self.active_model_idx = (self.active_model_idx + 1) % len(self.candidate_models)
+            logger.warning(
+                f"Gemini model '{failed_model}' is unavailable/deprecated. "
+                f"Automatically switching active model to '{self.current_model}'"
+            )
+
+    def _get_llm(self, api_key: str, streaming: bool = False, temperature: float = 0.3, model_name: Optional[str] = None):
+        target_model = model_name or self.current_model
         return ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model=target_model,
             temperature=temperature,
             google_api_key=api_key,
             streaming=streaming,
@@ -138,6 +162,9 @@ class LLMService:
                 except Exception as e:
                     last_error = str(e)
                     logger.warning(f"LLM invoke attempt {attempt+1} failed with key: {last_error}")
+                    if any(x in last_error.lower() for x in ["not_found", "404", "no longer available", "not available"]):
+                        self._switch_to_next_model(self.current_model)
+                        continue
                     if any(x in last_error for x in ["429", "RESOURCE_EXHAUSTED", "BAD_RECORD_MAC"]):
                         continue
                     break
@@ -171,6 +198,8 @@ class LLMService:
             except Exception as e:
                 last_error = str(e)
                 logger.warning(f"Streaming failed with key: {last_error}. Trying next key...")
+                if any(x in last_error.lower() for x in ["not_found", "404", "no longer available", "not available"]):
+                    self._switch_to_next_model(self.current_model)
                 continue
 
         yield f"\n\n[AI Error: Service temporarily unavailable ({last_error})]"
@@ -198,7 +227,9 @@ class LLMService:
                     t = res.content.strip().strip('"').strip("'")
                     if t and len(t) < 50:
                         return t
-                except Exception:
+                except Exception as e:
+                    if any(x in str(e).lower() for x in ["not_found", "404", "no longer available", "not available"]):
+                        self._switch_to_next_model(self.current_model)
                     continue
 
         # Fast fallback heuristic
@@ -238,7 +269,9 @@ class LLMService:
                         topic = str(data.get("topic", "")).strip() or clean_q[:40].title()
                         if queries:
                             return queries[:2], topic
-                except Exception:
+                except Exception as e:
+                    if any(x in str(e).lower() for x in ["not_found", "404", "no longer available", "not available"]):
+                        self._switch_to_next_model(self.current_model)
                     continue
 
         words = [w for w in re.findall(r'\b\w+\b', clean_q) if w.lower() not in ('how', 'why', 'what', 'is', 'are', 'the', 'so', 'a', 'an', 'to')]
@@ -294,7 +327,10 @@ class LLMService:
                         if queries:
                             return queries[:3], topic
                 except Exception as e:
-                    logger.warning(f"Verification query generation attempt failed: {e}")
+                    err_str = str(e)
+                    logger.warning(f"Verification query generation attempt failed: {err_str}")
+                    if any(x in err_str.lower() for x in ["not_found", "404", "no longer available", "not available"]):
+                        self._switch_to_next_model(self.current_model)
                     continue
 
         return self._heuristic_verification_fallback(query, doc_snippet, extracted_links)
@@ -382,7 +418,10 @@ class LLMService:
                     if isinstance(parsed, list) and len(parsed) >= 2:
                         return [str(q).strip() for q in parsed[:4] if str(q).strip()]
             except Exception as e:
-                logger.warning(f"Followup question generation error: {e}")
+                err_msg = str(e)
+                logger.warning(f"Followup question generation error: {err_msg}")
+                if any(x in err_msg.lower() for x in ["not_found", "404", "no longer available", "not available"]):
+                    self._switch_to_next_model(self.current_model)
                 continue
 
         return default_fallbacks
