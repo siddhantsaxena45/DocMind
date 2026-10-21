@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import logging
 import json
 import re
@@ -8,7 +9,20 @@ from app.core.config import settings, api_key_rotator
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are DocMind AI, a state-of-the-art Research and Document Intelligence Assistant.
+def get_system_prompt() -> str:
+    now = datetime.now(timezone.utc)
+    current_date_str = now.strftime("%A, %B %d, %Y")
+    current_year = now.year
+
+    return f"""You are DocMind AI, a state-of-the-art Research and Document Intelligence Assistant.
+
+TEMPORAL CONTEXT & CURRENT DATE:
+- Today's date is {current_date_str}. The current year is {current_year}.
+- You must always maintain rigorous temporal awareness relative to today ({current_date_str}).
+- When answering questions about current events, wealth, net worth, subscriber counts, technology, or public figures:
+  * Prioritize the most recent information ({current_year} and late {current_year - 1}).
+  * If web citations or public estimates are from an earlier year (such as 2024 or 2025), EXPLICITLY specify the year of that data (e.g. "According to reports published in 2024, ...") and clarify that subsequent growth has occurred since then.
+  * NEVER present 2024 or older data as if it represents current statistics for {current_year}.
 
 Your purpose is to answer the user's questions with exceptional precision, analytical depth, and clarity, drawing upon the provided Document Evidence and Real-Time Web Search Evidence.
 
@@ -83,7 +97,7 @@ class LLMService:
         )
 
     def _prepare_messages(self, query: str, chat_history: List[dict], context: str) -> List[BaseMessage]:
-        messages: List[BaseMessage] = [SystemMessage(content=SYSTEM_PROMPT)]
+        messages: List[BaseMessage] = [SystemMessage(content=get_system_prompt())]
 
         # Add conversation history
         for item in chat_history[-10:]:
@@ -190,6 +204,47 @@ class LLMService:
         # Fast fallback heuristic
         words = re.findall(r'\b\w+\b', cleaned)
         return " ".join(words[:5]).title()
+
+    def formulate_web_research_queries(self, query: str) -> Tuple[List[str], str]:
+        """
+        Generates targeted, temporally-aware search queries from the user's prompt.
+        Ensures queries are optimized for freshness (current year) and keyword relevance.
+        Returns (list_of_queries, display_topic).
+        """
+        now = datetime.now(timezone.utc)
+        current_year = now.year
+        clean_q = query.strip()
+
+        api_keys = api_key_rotator.get_rotated_google_keys()
+        if api_keys:
+            prompt = (
+                f"You are a search query optimizer. The current year is {current_year}.\n"
+                f"Convert the user's conversational prompt into 2 distinct, highly effective search queries for a search engine.\n"
+                f"- Query 1 should be the core keyword search for facts, background, and entities.\n"
+                f"- Query 2 should be targeted for the most recent updates, current year ({current_year}), or latest statistics.\n"
+                f"- Output ONLY a JSON object with this exact structure:\n"
+                f'{{\n  "queries": ["keyword query 1", "recent query 2"],\n  "topic": "Concise 3-5 word topic for UI badge"\n}}\n\n'
+                f"User Prompt: {clean_q}"
+            )
+            for key in api_keys[:2]:
+                try:
+                    llm = self._get_llm(key, streaming=False, temperature=0.1)
+                    res = llm.invoke([HumanMessage(content=prompt)])
+                    raw = res.content if isinstance(res.content, str) else str(res.content)
+                    match = re.search(r'\{.*\}', raw, re.DOTALL)
+                    if match:
+                        data = json.loads(match.group(0))
+                        queries = [str(q).strip() for q in data.get("queries", []) if str(q).strip()]
+                        topic = str(data.get("topic", "")).strip() or clean_q[:40].title()
+                        if queries:
+                            return queries[:2], topic
+                except Exception:
+                    continue
+
+        words = [w for w in re.findall(r'\b\w+\b', clean_q) if w.lower() not in ('how', 'why', 'what', 'is', 'are', 'the', 'so', 'a', 'an', 'to')]
+        keyword_q = " ".join(words[:6])
+        recent_q = f"{keyword_q} {current_year}" if str(current_year) not in keyword_q else keyword_q
+        return [recent_q, keyword_q], clean_q[:40].title()
 
     def formulate_verification_queries(
         self,

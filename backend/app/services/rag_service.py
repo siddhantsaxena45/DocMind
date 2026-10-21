@@ -416,11 +416,13 @@ class RAGService:
                                 f"[[LIVE_LINK_{l_idx}]] Target URL: {l_url}\nPage Title: {l_title}\nLive Content:\n{l_snippet}"
                             )
             else:
-                search_topic = llm_service.extract_research_query(query)
-                search_q = search_topic if search_topic and len(search_topic) < len(query) else query
-                web_results = web_search_service.search(query=search_q, max_results=6)
+                search_queries, search_topic = llm_service.formulate_web_research_queries(query)
+                web_results = web_search_service.search_multi(queries=search_queries, max_results=8)
                 if web_results:
-                    context_parts.append("\n### REAL-TIME WEB SEARCH EVIDENCE:")
+                    context_parts.append(
+                        f"\n### REAL-TIME WEB SEARCH EVIDENCE (Targeted Searches: {', '.join(search_queries)}):\n"
+                        f"DocMind gathered fresh facts and up-to-date sources using multi-angle queries."
+                    )
 
             if web_results:
                 for idx, item in enumerate(web_results, start=1):
