@@ -421,7 +421,8 @@ class RAGService:
                     if live_fetched_sources:
                         context_parts.append(
                             "\n### LIVE VERIFIED EVIDENCE (Directly Scraped from Document Links & Online Profiles):\n"
-                            "DocMind directly visited the live web pages to check if the claims in the document match what is live:"
+                            "DocMind directly visited live web pages to check if claims match what is live.\n"
+                            "Note: Cite these using clean numeric badges [1], [2], etc. (NEVER output raw '[[WEB_REF_1]]' tags)."
                         )
                         for l_idx, live_item in enumerate(live_fetched_sources, start=1):
                             l_url = live_item.get("url", "")
@@ -490,7 +491,8 @@ class RAGService:
                     context_parts.append(
                         f"\n### REAL-TIME WEB RESEARCH EVIDENCE (Multi-Source Synthesis across {len(live_fetched_sources)} authoritative websites):\n"
                         f"Targeted searches executed: {', '.join(search_queries)}\n"
-                        f"DocMind visited and extracted in-depth article content and verified facts directly from live web pages:\n"
+                        f"DocMind visited and extracted in-depth article content and verified facts directly from live web pages.\n"
+                        f"Note: Cite these sources inline using clean numeric markers [1], [2], etc. (NEVER output raw '[[WEB_REF_1]]' in response text or tables).\n"
                     )
                     for l_idx, live_item in enumerate(live_fetched_sources, start=1):
                         l_url = live_item.get("url", "")

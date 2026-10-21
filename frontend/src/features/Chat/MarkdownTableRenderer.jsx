@@ -5,29 +5,95 @@ import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Copy, ExternalLink, Sparkles, Globe, FileText } from "lucide-react";
 
 /**
+ * Transforms raw citation reference tokens into interactive markdown links:
+ * - [[WEB_REF_1]] -> [1](#source-card-1)
+ * - [[WEB_REF_1], [WEB_REF_4]] -> [1](#source-card-1) [4](#source-card-4)
+ * - [[LIVE_LINK_1]] -> [1](#source-card-1)
+ * - [WEB_REF_1] -> [1](#source-card-1)
+ * - [1] or [1, 2] -> [1](#source-card-1) [2](#source-card-2)
+ * Shields code blocks (```...``` and `...`) so code syntax is never modified.
+ */
+export function formatCitationBadges(rawText) {
+  if (!rawText || typeof rawText !== "string") return rawText;
+
+  // Split by code fences (```...```) or inline code (`...`) to preserve code blocks intact
+  const codeBlockRegex = /(```[\s\S]*?```|`[^`\n]+`)/g;
+  const parts = rawText.split(codeBlockRegex);
+
+  return parts
+    .map((part, index) => {
+      // Odd indices are code blocks - leave them strictly untouched
+      if (index % 2 === 1) {
+        return part;
+      }
+
+      // 1. Match compound/nested citations containing WEB_REF_ or LIVE_LINK_
+      // e.g. [[WEB_REF_1], [WEB_REF_4]], [[WEB_REF_1]], [WEB_REF_1], [[LIVE_LINK_1]]
+      let formatted = part.replace(
+        /(?<!\w)\[+[\s\[]*(?:WEB_REF_|LIVE_LINK_)\d+[^\]]*?\]+(?!\s*\()/gi,
+        (match) => {
+          const nums = match.match(/\d+/g);
+          if (!nums || nums.length === 0) return match;
+          const uniqueNums = [...new Set(nums)];
+          return uniqueNums.map((n) => `[${n}](#source-card-${n})`).join(" ");
+        }
+      );
+
+      // 2. Fallback for any standalone [[WEB_REF_X]] or [WEB_REF_X]
+      formatted = formatted.replace(
+        /\[\[?(?:WEB_REF_|LIVE_LINK_)(\d+)\]?\](?!\s*\()/gi,
+        (match, num) => `[${num}](#source-card-${num})`
+      );
+
+      // 3. Match standalone bracketed citations like [1] or [1, 2] not followed by (
+      // Limit to 1 or 2 digit citations (e.g. [1] up to [99]) to avoid matching arbitrary brackets
+      formatted = formatted.replace(
+        /(?<![\w\[])\[(\d{1,2}(?:\s*,\s*\d{1,2})*)\](?!\s*[\(\[])/g,
+        (match, inner) => {
+          const nums = inner.match(/\d+/g);
+          if (!nums || nums.length === 0) return match;
+          const uniqueNums = [...new Set(nums)];
+          return uniqueNums.map((n) => `[${n}](#source-card-${n})`).join(" ");
+        }
+      );
+
+      return formatted;
+    })
+    .join("");
+}
+
+/**
  * Renders citation badges [1], [2] or styled links.
  */
 function renderCitationLink(href, children) {
   const text = String(children || "").trim();
   const citeMatch = text.match(/^(?:\[?WEB_REF_)?(\d+)\]?$/i) || text.match(/^\[?LIVE_LINK_(\d+)\]?$/i);
+  const cardMatch = href && href.match(/^#source-card-(\d+)$/i);
 
-  if (citeMatch) {
-    const num = citeMatch[1];
+  if (citeMatch || cardMatch) {
+    const num = (cardMatch && cardMatch[1]) || (citeMatch && citeMatch[1]);
+    const isInternalCard = href && href.startsWith("#source-card-");
+
     return (
       <a
         href={href || `#source-card-${num}`}
         target={href && href.startsWith("http") ? "_blank" : "_self"}
         rel="noopener noreferrer"
-        onClick={() => {
+        onClick={(e) => {
           const card = document.getElementById(`source-card-${num}`);
           if (card) {
+            e.preventDefault();
             card.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            card.classList.add("ring-2", "ring-cyan-400");
-            setTimeout(() => card.classList.remove("ring-2", "ring-cyan-400"), 2000);
+            card.classList.add("ring-2", "ring-cyan-400", "shadow-lg", "shadow-cyan-500/20");
+            setTimeout(() => {
+              card.classList.remove("ring-2", "ring-cyan-400", "shadow-lg", "shadow-cyan-500/20");
+            }, 2500);
+          } else if (isInternalCard) {
+            e.preventDefault();
           }
         }}
         className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 mx-0.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 hover:text-cyan-100 border border-cyan-500/40 text-[10px] font-bold font-mono transition-all no-underline shadow-xs hover:scale-110 align-baseline cursor-pointer"
-        title={href || `Source [${num}]`}
+        title={href && !isInternalCard ? href : `Source [${num}]`}
       >
         {num}
       </a>
@@ -52,6 +118,7 @@ function renderCitationLink(href, children) {
  */
 function InlineCell({ text }) {
   if (!text) return null;
+  const formatted = formatCitationBadges(text);
   return (
     <ReactMarkdown
       components={{
@@ -66,7 +133,7 @@ function InlineCell({ text }) {
         a: ({ href, children }) => renderCitationLink(href, children)
       }}
     >
-      {text}
+      {formatted}
     </ReactMarkdown>
   );
 }
@@ -142,7 +209,8 @@ export default function MarkdownTableRenderer({ content, messageIdx = 0 }) {
 
   if (!content) return null;
 
-  const blocks = splitMarkdownBlocks(content);
+  const formattedContent = formatCitationBadges(content);
+  const blocks = splitMarkdownBlocks(formattedContent);
 
   return (
     <div className="space-y-4 text-xs md:text-sm leading-relaxed text-slate-200">

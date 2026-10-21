@@ -1,4 +1,5 @@
 import json
+import re
 import asyncio
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
@@ -16,6 +17,21 @@ import jwt
 from app.core.config import settings
 
 router = APIRouter(prefix="/api/conversations", tags=["Conversations / Chat"])
+
+
+def normalize_answer_citations(text: str) -> str:
+    """
+    Normalizes any raw [[WEB_REF_1]], [[WEB_REF_1], [WEB_REF_4]], or [[LIVE_LINK_1]] tokens
+    into clean bracketed numeric citations like [1] [4] before saving to the database.
+    """
+    if not text:
+        return text
+
+    def _repl(m):
+        nums = re.findall(r'\b\d+\b', m.group(0))
+        return " ".join(f"[{n}]" for n in dict.fromkeys(nums)) if nums else m.group(0)
+
+    return re.sub(r'\[+[\s\[]*(?:WEB_REF_|LIVE_LINK_)\d+[^\]]*?\]+', _repl, text)
 
 
 def _verify_conversation_owner(cur, conversation_id: str, user_id: str):
@@ -302,6 +318,7 @@ def send_message(
         raise HTTPException(status_code=500, detail=f"LLM generation failed: {e}")
 
     # 7. Generate follow-up / related questions (Perplexity style)
+    answer = normalize_answer_citations(answer)
     related_questions = llm_service.generate_followup_questions(user_text, answer)
 
     # 8. Filter and ground citations against the synthesized answer
@@ -461,6 +478,7 @@ async def stream_message(
                 yield f"event: chunk\ndata: {json.dumps({'chunk': chunk})}\n\n"
 
             complete_text = "".join(full_answer)
+            complete_text = normalize_answer_citations(complete_text)
 
             # 5. Filter and ground citations against the synthesized answer
             grounded_citations = rag_service.filter_and_ground_citations(citations, complete_text)
@@ -581,6 +599,7 @@ def regenerate_response(
         context=context
     )
 
+    answer = normalize_answer_citations(answer)
     related_questions = llm_service.generate_followup_questions(user_text, answer)
 
     grounded_citations = rag_service.filter_and_ground_citations(citations, answer)
