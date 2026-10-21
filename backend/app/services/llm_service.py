@@ -91,8 +91,9 @@ class LLMService:
         raw_candidates = [
             settings.GEMINI_MODEL,
             "gemini-3.8-flash",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
+            "gemini-3.1-flash-lite",
         ]
         seen = set()
         self.candidate_models = [m for m in raw_candidates if m and not (m in seen or seen.add(m))]
@@ -118,6 +119,19 @@ class LLMService:
             google_api_key=api_key,
             streaming=streaming,
             max_output_tokens=4096
+        )
+
+    def _get_fast_llm(self, api_key: str, temperature: float = 0.2):
+        """
+        Ultra-fast Gemini 3.5 Flash-Lite (15 RPM, 1,000 RPD separate free tier quota)
+        for auxiliary tasks (follow-ups, topics, titles) without eating primary chat quota.
+        """
+        return ChatGoogleGenerativeAI(
+            model=settings.GEMINI_FAST_MODEL,
+            temperature=temperature,
+            google_api_key=api_key,
+            streaming=False,
+            max_output_tokens=1024
         )
 
     def _prepare_messages(self, query: str, chat_history: List[dict], context: str) -> List[BaseMessage]:
@@ -222,7 +236,7 @@ class LLMService:
             )
             for key in api_keys[:2]:
                 try:
-                    llm = self._get_llm(key, streaming=False, temperature=0.1)
+                    llm = self._get_fast_llm(key, temperature=0.1)
                     res = llm.invoke([HumanMessage(content=extract_prompt)])
                     t = res.content.strip().strip('"').strip("'")
                     if t and len(t) < 50:
@@ -408,7 +422,7 @@ class LLMService:
 
         for key in api_keys[:2]:
             try:
-                llm = self._get_llm(key, streaming=False, temperature=0.3)
+                llm = self._get_fast_llm(key, temperature=0.3)
                 res = llm.invoke([HumanMessage(content=prompt)])
                 raw = res.content.strip()
                 # Parse JSON array
@@ -441,7 +455,7 @@ class LLMService:
         )
         for key in api_keys:
             try:
-                llm = self._get_llm(key, streaming=False, temperature=0.2)
+                llm = self._get_fast_llm(key, temperature=0.2)
                 res = llm.invoke([HumanMessage(content=title_prompt)])
                 title = res.content.strip().strip('"').strip("'")
                 if title:
