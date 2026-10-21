@@ -23,7 +23,7 @@ export default function ResearchStatusBar({
   const displayQuery = researchQuery || (sources.length > 0 ? "sources & document intelligence" : "knowledge base");
 
   return (
-    <div className="mb-4 rounded-xl border border-white/5 bg-slate-900/40 hover:bg-slate-900/60 transition-all overflow-hidden">
+    <div className="mb-4 rounded-xl border border-amber-500/20 bg-black/60 hover:bg-black/80 transition-all overflow-hidden shadow-sm">
       {/* Clickable Header Bar */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -57,13 +57,13 @@ export default function ResearchStatusBar({
                 />
               ))}
               {docSources.length > 0 && webSources.length < 3 && (
-                <div className="w-4 h-4 rounded-full ring-2 ring-slate-900 bg-brand-primary/20 flex items-center justify-center text-[9px] text-brand-primary font-bold">
+                <div className="w-4 h-4 rounded-full ring-2 ring-[#08080a] bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-[9px] font-bold">
                   <FileText className="w-2.5 h-2.5" />
                 </div>
               )}
             </div>
 
-            <span className="text-[10px] font-semibold text-cyan-300 bg-cyan-950/60 ring-1 ring-cyan-500/30 rounded-full px-2 py-0.5">
+            <span className="text-[10px] font-semibold text-amber-300 bg-amber-950/70 ring-1 ring-amber-500/40 rounded-full px-2 py-0.5 border border-amber-500/30">
               {usedSources.length > 0 ? `${usedSources.length} cited` : `${sources.length} sources`}
             </span>
           </div>
@@ -72,23 +72,23 @@ export default function ResearchStatusBar({
 
       {/* Collapsible Details Drawer */}
       {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-white/5 space-y-2 text-[11px] text-slate-400">
+        <div className="px-3 pb-3 pt-1 border-t border-amber-500/10 space-y-2 text-[11px] text-slate-400">
           <div className="flex items-center gap-1.5 text-slate-300 font-medium pt-1">
-            <Search className="w-3 h-3 text-brand-secondary" />
+            <Search className="w-3 h-3 text-amber-400" />
             <span>Search Query: <strong className="text-white">{displayQuery}</strong></span>
           </div>
 
-          <div className="space-y-1 pl-4 border-l border-white/10 my-2">
+          <div className="space-y-1 pl-4 border-l border-amber-500/20 my-2">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span>Extracted research intent and targeted real-time sources</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
               <span>Retrieved and inspected {sources.length} candidate references</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
               <span>
                 {usedSources.length > 0
                   ? `Synthesized answer grounded in ${usedSources.length} verified cited sources`
@@ -107,7 +107,7 @@ export default function ResearchStatusBar({
               {onOpenAllSources && (
                 <button
                   onClick={onOpenAllSources}
-                  className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium flex items-center gap-1"
+                  className="text-amber-400 hover:text-amber-300 transition-colors font-medium flex items-center gap-1"
                 >
                   View full source details <ExternalLink className="w-2.5 h-2.5" />
                 </button>

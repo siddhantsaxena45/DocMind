@@ -31,10 +31,10 @@ export default function SourceCardsCarousel({
         {onOpenAllSources && sources.length > usedSources.length && (
           <button
             onClick={onOpenAllSources}
-            className="text-[11px] font-medium text-slate-400 hover:text-cyan-300 transition-colors flex items-center gap-1 group shrink-0"
+            className="text-[11px] font-medium text-slate-400 hover:text-amber-300 transition-colors flex items-center gap-1 group shrink-0"
           >
             <span>All {sources.length} evaluated</span>
-            <ArrowRight className="w-3 h-3 text-slate-500 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all" />
+            <ArrowRight className="w-3 h-3 text-slate-500 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all" />
           </button>
         )}
       </div>
@@ -53,7 +53,7 @@ export default function SourceCardsCarousel({
               href={src.url || "#"}
               target={src.url ? "_blank" : "_self"}
               rel="noopener noreferrer"
-              className="w-60 sm:w-64 shrink-0 p-3.5 rounded-2xl bg-slate-900/70 hover:bg-slate-850 border border-white/10 hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/5 transition-all flex flex-col justify-between group cursor-pointer relative overflow-hidden"
+              className="w-60 sm:w-64 shrink-0 p-3.5 rounded-2xl bg-[#0c0c0f]/80 hover:bg-[#141418] border border-amber-500/20 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all flex flex-col justify-between group cursor-pointer relative overflow-hidden"
               title={src.url ? `Open source link: ${src.url}` : src.title}
             >
               <div>
@@ -61,7 +61,7 @@ export default function SourceCardsCarousel({
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5 truncate">
                     {/* Citation Number Pill */}
-                    <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center text-[10px] font-bold font-mono shrink-0">
+                    <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-[10px] font-bold font-mono shrink-0">
                       {citationNum}
                     </span>
 
@@ -72,7 +72,7 @@ export default function SourceCardsCarousel({
                       siteName={siteLabel}
                       isWeb={isWeb}
                       className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
-                      fallbackClassName={isWeb ? "w-3.5 h-3.5 text-cyan-400 shrink-0" : "w-3.5 h-3.5 text-brand-primary shrink-0"}
+                      fallbackClassName={isWeb ? "w-3.5 h-3.5 text-amber-400 shrink-0" : "w-3.5 h-3.5 text-amber-300 shrink-0"}
                     />
 
                     <span className="text-[11px] font-medium text-slate-300 group-hover:text-white truncate">
@@ -85,13 +85,13 @@ export default function SourceCardsCarousel({
                     {src.page ? (
                       `p.${src.page}`
                     ) : src.url ? (
-                      <ExternalLink className="w-2.5 h-2.5 opacity-70 group-hover:opacity-100 group-hover:text-cyan-300" />
+                      <ExternalLink className="w-2.5 h-2.5 opacity-70 group-hover:opacity-100 group-hover:text-amber-300" />
                     ) : null}
                   </span>
                 </div>
 
                 {/* Title */}
-                <h4 className="text-xs font-semibold text-white group-hover:text-cyan-300 transition-colors line-clamp-2 leading-snug mb-1.5">
+                <h4 className="text-xs font-semibold text-white group-hover:text-amber-300 transition-colors line-clamp-2 leading-snug mb-1.5">
                   {src.title}
                 </h4>
 
@@ -108,7 +108,7 @@ export default function SourceCardsCarousel({
                 <span className="text-emerald-400 font-medium flex items-center gap-1">
                   <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> Grounded in answer
                 </span>
-                <span className="font-mono text-cyan-300 font-bold bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/30">
+                <span className="font-mono text-amber-300 font-bold bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
                   [{citationNum}]
                 </span>
               </div>

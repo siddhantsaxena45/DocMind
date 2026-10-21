@@ -34,31 +34,31 @@ export default function LoginView({ onAuth }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-main px-4 relative overflow-hidden">
       {/* Decorative background gradients */}
-      <div className="absolute top-[-10%] left-[-10%] w-[45%] h-[45%] bg-brand-primary/20 rounded-full blur-[140px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-brand-secondary/15 rounded-full blur-[140px]" />
+      <div className="absolute top-[-10%] left-[-10%] w-[45%] h-[45%] bg-amber-500/15 rounded-full blur-[140px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-yellow-600/10 rounded-full blur-[140px]" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="glass rounded-3xl p-8 md:p-10 border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)]">
+        <div className="glass rounded-3xl p-8 md:p-10 border border-amber-500/20 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)]">
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-xl shadow-brand-primary/30 mb-5">
-              <Layers className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-400 via-yellow-500 to-amber-700 flex items-center justify-center shadow-xl shadow-amber-500/30 mb-5">
+              <Layers className="w-7 h-7 text-slate-950" />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight mb-2">DocMind AI</h1>
+            <h1 className="text-3xl font-extrabold gold-gradient-text tracking-tight mb-2">DocMind AI</h1>
             <p className="text-slate-400 text-xs md:text-sm max-w-xs">
               Deep Document Intelligence & Real-Time Web Research
             </p>
           </div>
 
-          <div className="flex p-1 bg-slate-950/60 rounded-xl mb-6 border border-white/5">
+          <div className="flex p-1 bg-black/60 rounded-xl mb-6 border border-amber-500/20">
             <button
               type="button"
               className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
                 mode === "login"
-                  ? "bg-white/10 text-white shadow-xs"
+                  ? "bg-amber-500/20 text-amber-200 border border-amber-500/30 shadow-xs"
                   : "text-slate-500 hover:text-slate-300"
               }`}
               onClick={() => { setMode("login"); setError(null); }}
@@ -70,7 +70,7 @@ export default function LoginView({ onAuth }) {
               type="button"
               className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
                 mode === "signup"
-                  ? "bg-white/10 text-white shadow-xs"
+                  ? "bg-amber-500/20 text-amber-200 border border-amber-500/30 shadow-xs"
                   : "text-slate-500 hover:text-slate-300"
               }`}
               onClick={() => { setMode("signup"); setError(null); }}
@@ -134,11 +134,11 @@ export default function LoginView({ onAuth }) {
 
           <div className="mt-8 flex items-center justify-center gap-6 text-slate-500 text-[11px]">
             <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-brand-secondary" />
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
               <span>User Data Isolation</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-brand-primary" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>Verified Sources</span>
             </div>
           </div>

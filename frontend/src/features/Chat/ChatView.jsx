@@ -37,7 +37,7 @@ const getFileIconColor = (filename = "") => {
     case "jpg":
     case "jpeg":
     case "webp": return "text-purple-400";
-    default: return "text-cyan-400";
+    default: return "text-amber-400";
   }
 };
 
@@ -435,9 +435,9 @@ export default function ChatView({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-900/60 relative overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[#050507] relative overflow-hidden">
       {/* Top Header Bar */}
-      <header className="h-14 md:h-16 border-b border-white/5 flex items-center justify-between px-3 md:px-6 bg-slate-950/40 backdrop-blur-md shrink-0 z-20">
+      <header className="h-14 md:h-16 border-b border-amber-500/15 flex items-center justify-between px-3 md:px-6 bg-black/60 backdrop-blur-md shrink-0 z-20">
         <div className="flex items-center gap-2 md:gap-3 truncate">
           <button
             onClick={onSidebarToggle}
@@ -451,13 +451,13 @@ export default function ChatView({
               {conversation?.title || "New Chat"}
             </h2>
             <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium">
-              <span className={attachedDocs.length > 0 ? "text-brand-primary font-semibold" : "text-slate-500"}>
+              <span className={attachedDocs.length > 0 ? "text-amber-400 font-semibold" : "text-slate-500"}>
                 {attachedDocs.length > 0
                   ? `${attachedDocs.length} ${attachedDocs.length === 1 ? "file" : "files"} in this chat's knowledge base`
                   : "No documents attached"}
               </span>
               <span>•</span>
-              <span className={conversation?.web_search_enabled ? "text-cyan-400" : "text-slate-500"}>
+              <span className={conversation?.web_search_enabled ? "text-amber-400 font-semibold" : "text-slate-500"}>
                 Web Search {conversation?.web_search_enabled ? "ON" : "OFF"}
               </span>
             </div>
@@ -471,8 +471,8 @@ export default function ChatView({
             onClick={() => setShowKnowledgeModal(true)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
               attachedDocs.length > 0
-                ? "bg-brand-primary/15 border-brand-primary/40 text-brand-primary hover:bg-brand-primary/25 shadow-xs shadow-brand-primary/20"
-                : "bg-white/5 border-dashed border-white/20 text-slate-400 hover:text-white hover:border-white/40"
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25 shadow-xs shadow-amber-500/20"
+                : "bg-white/5 border-dashed border-white/20 text-slate-400 hover:text-white hover:border-amber-500/40"
             }`}
             title="Configure documents accessible by this chat"
           >
@@ -491,20 +491,20 @@ export default function ChatView({
             onClick={toggleWebSearch}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
               conversation?.web_search_enabled
-                ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-300 shadow-xs shadow-cyan-500/20"
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-xs shadow-amber-500/20"
                 : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200"
             }`}
             title="Toggle live Web Search"
           >
             <Globe className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Web Search</span>
-            <span className={`w-1.5 h-1.5 rounded-full ${conversation?.web_search_enabled ? "bg-cyan-400" : "bg-slate-600"}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${conversation?.web_search_enabled ? "bg-amber-400" : "bg-slate-600"}`} />
           </button>
 
           {/* Share Button */}
           <button
             onClick={onOpenShareModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-amber-500/10 border border-white/10 hover:border-amber-500/30 text-slate-300 hover:text-white transition-all"
             title="Share chat link"
           >
             <Share2 className="w-3.5 h-3.5" />
@@ -534,29 +534,29 @@ export default function ChatView({
 
         {messages.length === 0 && !loading && (
           <div className="max-w-2xl mx-auto py-8 md:py-16 flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-xl shadow-brand-primary/20 mb-5">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-amber-400 via-yellow-500 to-amber-700 flex items-center justify-center shadow-xl shadow-amber-500/30 mb-5">
+              <Sparkles className="w-8 h-8 text-slate-950 font-bold" />
             </div>
 
-            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
-              DocMind AI Research Assistant
+            <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-2">
+              DocMind <span className="gold-gradient-text">AI Research Assistant</span>
             </h3>
             <p className="text-slate-400 text-xs md:text-sm max-w-md leading-relaxed mb-6">
               Ask deep questions about your attached files with page-accurate citations and live web synthesis.
             </p>
 
             {/* Chat Scope Status Card */}
-            <div className="w-full mb-6 p-4 rounded-2xl bg-white/5 border border-white/10 text-left">
+            <div className="w-full mb-6 p-4 rounded-2xl bg-black/40 border border-amber-500/20 text-left">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-brand-primary" />
+                  <Database className="w-4 h-4 text-amber-400" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
                     This Chat's Personal Knowledge Base
                   </span>
                 </div>
                 <button
                   onClick={() => setShowKnowledgeModal(true)}
-                  className="text-xs text-brand-primary hover:underline font-semibold flex items-center gap-1"
+                  className="text-xs text-amber-400 hover:text-amber-300 hover:underline font-semibold flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" /> Manage Files
                 </button>
@@ -635,16 +635,16 @@ export default function ChatView({
                 className={`flex gap-3 md:gap-4 ${isUser ? "justify-end" : "justify-start"}`}
               >
                 {!isUser && (
-                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shrink-0 shadow-md">
-                    <Bot className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-linear-to-br from-amber-400 via-yellow-500 to-amber-700 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+                    <Bot className="w-4 h-4 md:w-5 md:h-5 text-slate-950 font-bold" />
                   </div>
                 )}
 
                 <div
                   className={`max-w-[88%] md:max-w-[82%] rounded-2xl p-4 md:p-5 text-xs md:text-sm leading-relaxed ${
                     isUser
-                      ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20"
-                      : "bg-slate-800/60 border border-white/5 text-slate-200"
+                      ? "bg-linear-to-r from-amber-400 via-yellow-500 to-amber-500 text-slate-950 font-semibold shadow-md shadow-amber-500/20"
+                      : "bg-[#0d0d10] border border-amber-500/15 text-slate-200 shadow-lg shadow-black/40"
                   }`}
                 >
                   {isUser ? (
@@ -744,9 +744,9 @@ export default function ChatView({
                       ) : streaming && isLastMessage ? (
                         <div className="flex items-center gap-3 py-3 px-1 text-slate-300">
                           <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:0ms]" />
-                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:150ms]" />
-                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:300ms]" />
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce [animation-delay:0ms]" />
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce [animation-delay:150ms]" />
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce [animation-delay:300ms]" />
                           </div>
                           <span className="text-xs text-slate-300 font-medium tracking-wide">
                             {msg.research_query
@@ -834,19 +834,19 @@ export default function ChatView({
       </div>
 
       {/* Floating Bottom Input Bar */}
-      <div className="p-3 md:p-6 bg-slate-950/70 backdrop-blur-md border-t border-white/5 shrink-0">
+      <div className="p-3 md:p-6 bg-black/80 backdrop-blur-md border-t border-amber-500/15 shrink-0">
         <div className="max-w-3xl mx-auto relative">
           {/* Active Chat Knowledge Base Chips Bar */}
           {attachedDocs.length > 0 ? (
             <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
               <span className="text-[11px] font-semibold text-slate-400 shrink-0 flex items-center gap-1">
-                <Database className="w-3 h-3 text-brand-primary" />
+                <Database className="w-3 h-3 text-amber-400" />
                 Chat Knowledge Base:
               </span>
               {attachedDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-brand-primary/30 text-white text-[11px] shrink-0 shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black border border-amber-500/30 text-white text-[11px] shrink-0 shadow-xs"
                 >
                   <FileText className={`w-3 h-3 ${getFileIconColor(doc.filename)}`} />
                   <span className="max-w-[150px] truncate">{doc.filename}</span>
@@ -861,10 +861,10 @@ export default function ChatView({
               ))}
               <button
                 onClick={() => setShowKnowledgeModal(true)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-[11px] shrink-0 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-amber-500/10 border border-white/10 hover:border-amber-500/30 text-slate-300 hover:text-white text-[11px] shrink-0 transition-colors"
                 title="Add more documents to this chat"
               >
-                <Plus className="w-3 h-3 text-brand-primary" />
+                <Plus className="w-3 h-3 text-amber-400" />
                 <span>Add Doc</span>
               </button>
             </div>
@@ -876,7 +876,7 @@ export default function ChatView({
               </div>
               <button
                 onClick={() => setShowKnowledgeModal(true)}
-                className="text-brand-primary hover:underline font-semibold flex items-center gap-1"
+                className="text-amber-400 hover:text-amber-300 hover:underline font-semibold flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" /> Attach / Upload to Chat
               </button>
@@ -884,7 +884,7 @@ export default function ChatView({
           )}
 
           {/* Textarea Container */}
-          <div className="relative rounded-2xl bg-slate-900 border border-white/10 shadow-xl focus-within:border-brand-primary/50 transition-all">
+          <div className="relative rounded-2xl bg-[#0a0a0d] border border-amber-500/25 shadow-2xl focus-within:border-amber-400/60 focus-within:ring-1 focus-within:ring-amber-500/30 transition-all">
             <textarea
               ref={textareaRef}
               rows={1}
@@ -907,7 +907,7 @@ export default function ChatView({
                 onClick={toggleWebSearch}
                 className={`p-2 rounded-xl transition-colors ${
                   conversation?.web_search_enabled
-                    ? "text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20"
+                    ? "text-amber-400 bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25"
                     : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
                 }`}
                 title={`Web Search is ${conversation?.web_search_enabled ? "ON" : "OFF"}`}
@@ -919,7 +919,7 @@ export default function ChatView({
               <button
                 type="button"
                 onClick={() => setShowKnowledgeModal(true)}
-                className="p-2 rounded-xl text-slate-400 hover:text-brand-primary hover:bg-brand-primary/10 transition-colors"
+                className="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
                 title="Manage chat attached documents"
               >
                 <Paperclip className="w-4 h-4" />
@@ -940,7 +940,7 @@ export default function ChatView({
                   type="button"
                   onClick={() => handleSend()}
                   disabled={!input.trim()}
-                  className="p-2 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl shadow-md disabled:opacity-30 disabled:hover:bg-brand-primary transition-all active:scale-95"
+                  className="p-2 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-600 hover:brightness-110 text-slate-950 font-bold rounded-xl shadow-md shadow-amber-500/30 disabled:opacity-30 disabled:hover:brightness-100 transition-all active:scale-95"
                   title="Send message"
                 >
                   <ArrowUp className="w-4 h-4" />
@@ -1018,7 +1018,7 @@ export default function ChatView({
                       {attachedDocs.map((doc) => (
                         <div
                           key={doc.id}
-                          className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-brand-primary/20 text-xs"
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-black border border-amber-500/20 text-xs shadow-xs"
                         >
                           <div className="flex items-center gap-2.5 truncate">
                             <FileText className={`w-4 h-4 shrink-0 ${getFileIconColor(doc.filename)}`} />
@@ -1039,7 +1039,7 @@ export default function ChatView({
                       ))}
                     </div>
                   ) : (
-                    <div className="p-4 rounded-xl bg-slate-950/60 border border-dashed border-white/10 text-center text-xs text-slate-500">
+                    <div className="p-4 rounded-xl bg-black/60 border border-dashed border-amber-500/20 text-center text-xs text-slate-500">
                       No documents attached to this chat. This chat operates with general intelligence & web search only.
                     </div>
                   )}
@@ -1061,7 +1061,7 @@ export default function ChatView({
                         placeholder="Filter documents in library..."
                         value={docSearchQuery}
                         onChange={(e) => setDocSearchQuery(e.target.value)}
-                        className="w-full bg-slate-950 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-brand-primary/40"
+                        className="w-full bg-black border border-amber-500/20 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-amber-500/50"
                       />
                     </div>
                   )}
@@ -1079,7 +1079,7 @@ export default function ChatView({
                           </div>
                           <button
                             onClick={() => onAttachDoc(doc.id)}
-                            className="px-2.5 py-1 rounded-lg bg-brand-primary/20 hover:bg-brand-primary/30 text-brand-primary text-xs font-medium transition-colors shrink-0 flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-medium transition-colors shrink-0 flex items-center gap-1"
                           >
                             <Plus className="w-3 h-3" />
                             <span>Attach</span>

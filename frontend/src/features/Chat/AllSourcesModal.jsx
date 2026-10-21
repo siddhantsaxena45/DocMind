@@ -22,15 +22,15 @@ export default function AllSourcesModal({
   const usedCount = sources.filter((s) => s.used_in_answer === true).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div
-        className="w-full max-w-2xl bg-slate-900 border border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        className="w-full max-w-2xl bg-[#0c0c0f] border border-amber-500/20 rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 md:p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/60">
+        <div className="p-4 md:p-5 border-b border-amber-500/15 flex items-center justify-between bg-black/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-brand-primary/15 border border-brand-primary/30 flex items-center justify-center text-brand-primary">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
               <Search className="w-4 h-4" />
             </div>
             <div>
@@ -65,8 +65,8 @@ export default function AllSourcesModal({
                 key={idx}
                 className={`p-4 rounded-2xl transition-all space-y-2 group border ${
                   isUsed
-                    ? "bg-slate-900/90 border-cyan-500/30 ring-1 ring-cyan-500/10 hover:border-cyan-500/50"
-                    : "bg-white/[0.02] border-white/5 hover:border-white/10 opacity-70 hover:opacity-100"
+                    ? "bg-[#121216] border-amber-500/30 ring-1 ring-amber-500/15 hover:border-amber-500/50 shadow-md shadow-amber-500/5"
+                    : "bg-white/[0.02] border-white/5 hover:border-amber-500/20 opacity-70 hover:opacity-100"
                 }`}
               >
                 {/* Source Header */}
@@ -74,7 +74,7 @@ export default function AllSourcesModal({
                   <div className="flex items-center gap-2 truncate">
                     {/* Citation Number if used */}
                     {citationNum && (
-                      <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center text-[10px] font-bold font-mono shrink-0">
+                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-[10px] font-bold font-mono shrink-0">
                         {citationNum}
                       </span>
                     )}
@@ -85,7 +85,7 @@ export default function AllSourcesModal({
                       siteName={siteLabel}
                       isWeb={isWeb}
                       className="w-4 h-4 rounded-full object-cover shrink-0"
-                      fallbackClassName={isWeb ? "w-4 h-4 text-cyan-400 shrink-0" : "w-4 h-4 text-brand-primary shrink-0"}
+                      fallbackClassName={isWeb ? "w-4 h-4 text-amber-400 shrink-0" : "w-4 h-4 text-amber-500 shrink-0"}
                     />
                     <span className="text-xs font-semibold text-slate-200 truncate">
                       {siteLabel}
@@ -93,8 +93,8 @@ export default function AllSourcesModal({
 
                     {/* Status Pill */}
                     {isUsed ? (
-                      <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                        <CheckCircle2 className="w-2.5 h-2.5" /> Used in answer
+                      <span className="text-[10px] font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-amber-400" /> Used in answer
                       </span>
                     ) : (
                       <span className="text-[10px] font-medium text-slate-500 bg-white/5 px-2 py-0.5 rounded-full shrink-0">
@@ -114,7 +114,7 @@ export default function AllSourcesModal({
                       href={src.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium shrink-0 group-hover:underline"
+                      className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium shrink-0 group-hover:underline"
                     >
                       <span>Visit</span>
                       <ExternalLink className="w-3 h-3" />
@@ -123,13 +123,13 @@ export default function AllSourcesModal({
                 </div>
 
                 {/* Title */}
-                <h4 className="text-sm font-semibold text-white group-hover:text-cyan-300 transition-colors">
+                <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
                   {src.title}
                 </h4>
 
                 {/* Snippet */}
                 {src.snippet && (
-                  <p className="text-xs text-slate-400 leading-relaxed bg-black/30 p-2.5 rounded-xl border border-white/5">
+                  <p className="text-xs text-slate-400 leading-relaxed bg-black/40 p-2.5 rounded-xl border border-white/5">
                     {src.snippet}
                   </p>
                 )}
@@ -139,13 +139,13 @@ export default function AllSourcesModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/5 bg-slate-950/40 flex items-center justify-between">
+        <div className="p-4 border-t border-amber-500/15 bg-black/60 flex items-center justify-between">
           <span className="text-xs text-slate-500">
             {usedCount} of {sources.length} sources directly informed the synthesis
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors"
+            className="px-5 py-2 rounded-xl text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/30 transition-colors cursor-pointer"
           >
             Close
           </button>

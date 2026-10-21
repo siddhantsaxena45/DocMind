@@ -92,15 +92,15 @@ function renderCitationLink(href, children) {
           if (card) {
             e.preventDefault();
             card.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            card.classList.add("ring-2", "ring-cyan-400", "shadow-lg", "shadow-cyan-500/20");
+            card.classList.add("ring-2", "ring-amber-400", "shadow-lg", "shadow-amber-500/30");
             setTimeout(() => {
-              card.classList.remove("ring-2", "ring-cyan-400", "shadow-lg", "shadow-cyan-500/20");
+              card.classList.remove("ring-2", "ring-amber-400", "shadow-lg", "shadow-amber-500/30");
             }, 2500);
           } else if (isInternalCard) {
             e.preventDefault();
           }
         }}
-        className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 mx-0.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 hover:text-cyan-100 border border-cyan-500/40 text-[10px] font-bold font-mono transition-all no-underline shadow-xs hover:scale-110 align-baseline cursor-pointer"
+        className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 mx-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 hover:text-amber-100 border border-amber-500/40 text-[10px] font-bold font-mono transition-all no-underline shadow-xs hover:scale-110 align-baseline cursor-pointer"
         title={href && !isInternalCard ? href : `Source [${num}]`}
       >
         {num}
@@ -113,7 +113,7 @@ function renderCitationLink(href, children) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline underline-offset-2 font-medium break-all"
+      className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 underline underline-offset-2 font-medium break-all"
     >
       <span>{children}</span>
       <ExternalLink className="w-2.5 h-2.5 inline shrink-0 opacity-70" />
@@ -135,7 +135,7 @@ function InlineCell({ text }) {
     strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
     em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
     code: ({ children }) => (
-      <code className="bg-white/10 px-1 py-0.5 rounded text-[11px] font-mono text-cyan-300">
+      <code className="bg-amber-500/10 px-1 py-0.5 rounded text-[11px] font-mono text-amber-300 border border-amber-500/20">
         {children}
       </code>
     ),
@@ -244,26 +244,26 @@ export default function MarkdownTableRenderer({ content, messageIdx = 0 }) {
           return (
             <div
               key={bIdx}
-              className="overflow-x-auto my-4 rounded-2xl border border-white/10 bg-slate-950/60 shadow-xl custom-scrollbar"
+              className="overflow-x-auto my-4 rounded-2xl border border-amber-500/20 bg-[#08080a]/90 shadow-xl custom-scrollbar"
             >
               <table className="w-full text-left text-xs md:text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.04]">
+                  <tr className="border-b border-amber-500/20 bg-amber-500/[0.04]">
                     {block.headers.map((header, hIdx) => (
                       <th
                         key={hIdx}
-                        className="py-3 px-4 font-bold text-white tracking-wide first:pl-5 last:pr-5"
+                        className="py-3 px-4 font-bold text-amber-200 tracking-wide first:pl-5 last:pr-5"
                       >
                         <InlineCell text={header} />
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-amber-500/10">
                   {block.rows.map((row, rIdx) => (
                     <tr
                       key={rIdx}
-                      className="hover:bg-white/[0.02] transition-colors"
+                      className="hover:bg-amber-500/[0.03] transition-colors"
                     >
                       {row.map((cell, cIdx) => (
                         <td
@@ -314,9 +314,9 @@ export default function MarkdownTableRenderer({ content, messageIdx = 0 }) {
                   const text = String(children);
                   if (text.includes("Key takeaway:") || text.includes("Key Takeaway:")) {
                     return (
-                      <div className="my-3 p-3.5 rounded-xl bg-linear-to-r from-brand-primary/10 via-brand-secondary/10 to-transparent border-l-4 border-brand-primary border-y border-r border-white/5 text-slate-200">
+                      <div className="my-3 p-3.5 rounded-xl bg-linear-to-r from-amber-500/10 via-yellow-500/10 to-transparent border-l-4 border-amber-400 border-y border-r border-amber-500/20 text-slate-200">
                         <div className="flex items-start gap-2">
-                          <Sparkles className="w-4 h-4 text-brand-secondary shrink-0 mt-0.5" />
+                          <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                           <div className="text-xs md:text-sm leading-relaxed">{children}</div>
                         </div>
                       </div>
@@ -330,9 +330,9 @@ export default function MarkdownTableRenderer({ content, messageIdx = 0 }) {
                   const codeKey = `code_${messageIdx}_${bIdx}_${match ? match[1] : "txt"}`;
 
                   return !inline && match ? (
-                    <div className="rounded-xl overflow-hidden my-3 border border-white/10 shadow-lg">
-                      <div className="bg-slate-950 px-3.5 py-1.5 text-[11px] font-mono text-slate-400 border-b border-white/10 flex justify-between items-center">
-                        <span className="text-cyan-400 font-semibold">{match[1]}</span>
+                    <div className="rounded-xl overflow-hidden my-3 border border-amber-500/20 shadow-lg">
+                      <div className="bg-[#08080a] px-3.5 py-1.5 text-[11px] font-mono text-slate-400 border-b border-amber-500/20 flex justify-between items-center">
+                        <span className="text-amber-400 font-semibold">{match[1]}</span>
                         <button
                           onClick={() => handleCopyCode(codeString, codeKey)}
                           className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors"
@@ -354,14 +354,14 @@ export default function MarkdownTableRenderer({ content, messageIdx = 0 }) {
                         style={atomDark}
                         language={match[1]}
                         PreTag="div"
-                        className="!m-0 !bg-slate-950/90 !p-3.5 text-xs font-mono"
+                        className="!m-0 !bg-[#08080a]/95 !p-3.5 text-xs font-mono"
                         {...props}
                       >
                         {codeString}
                       </SyntaxHighlighter>
                     </div>
                   ) : (
-                    <code className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono text-cyan-300" {...props}>
+                    <code className="bg-amber-500/10 px-1.5 py-0.5 rounded text-xs font-mono text-amber-300 border border-amber-500/20" {...props}>
                       {children}
                     </code>
                   );

@@ -66,11 +66,11 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
   return (
     <div className="h-screen w-full flex flex-col bg-bg-main overflow-hidden">
       {/* Header */}
-      <header className="h-16 px-4 md:px-8 border-b border-white/5 flex items-center justify-between bg-slate-900/60 backdrop-blur-md shrink-0 z-10">
+      <header className="h-16 px-4 md:px-8 border-b border-amber-500/15 flex items-center justify-between bg-black/60 backdrop-blur-md shrink-0 z-10">
         <div className="flex items-center gap-3">
           <button
             onClick={onBackToApp}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             title="Back to DocMind"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -80,7 +80,7 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
               {sharedData.title}
             </h1>
             <div className="flex items-center gap-2 text-[10px] text-slate-500">
-              <span className="flex items-center gap-1 text-brand-secondary">
+              <span className="flex items-center gap-1 text-amber-400 font-medium">
                 <Share2 className="w-3 h-3" /> Shared Chat Snapshot
               </span>
               <span>•</span>
@@ -91,7 +91,7 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
 
         <button
           onClick={onBackToApp}
-          className="btn-primary px-4 py-2 text-xs font-semibold"
+          className="btn-primary px-4 py-2 text-xs font-semibold cursor-pointer"
         >
           Try DocMind AI
         </button>
@@ -105,16 +105,16 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
             className={`flex gap-3 md:gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.role === "assistant" && (
-              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shrink-0 shadow-md">
-                <Bot className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-amber-400 via-yellow-500 to-amber-600 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25">
+                <Sparkles className="w-5 h-5 text-slate-950" />
               </div>
             )}
 
             <div
-              className={`max-w-[85%] md:max-w-[82%] rounded-2xl p-4 md:p-6 border text-sm leading-relaxed ${
+              className={`max-w-[85%] md:max-w-[82%] rounded-2xl p-4 md:p-6 text-sm leading-relaxed ${
                 msg.role === "user"
-                  ? "bg-brand-primary/90 text-white border-brand-primary/30"
-                  : "bg-slate-800/70 border-white/5 text-slate-200"
+                  ? "bg-linear-to-r from-amber-400 via-yellow-500 to-amber-500 text-slate-950 font-semibold shadow-md shadow-amber-500/15"
+                  : "bg-[#0d0d10] border border-amber-500/20 text-slate-200 shadow-xl"
               }`}
             >
               {msg.role === "assistant" ? (
@@ -159,10 +159,10 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
                   )}
 
                   {/* Action Toolbar */}
-                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+                  <div className="mt-4 pt-3 border-t border-amber-500/15 flex items-center justify-between text-xs text-slate-400">
                     <button
                       onClick={() => copyMessage(msg.content, idx)}
-                      className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
+                      className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5 cursor-pointer"
                       title="Copy response"
                     >
                       {copiedIndex === idx ? (
@@ -185,8 +185,8 @@ export default function SharedChatView({ shareToken, onBackToApp }) {
             </div>
 
             {msg.role === "user" && (
-              <div className="w-9 h-9 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center shrink-0">
-                <User className="w-5 h-5 text-slate-300" />
+              <div className="w-9 h-9 rounded-xl bg-[#121216] border border-amber-500/20 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-amber-400" />
               </div>
             )}
           </div>

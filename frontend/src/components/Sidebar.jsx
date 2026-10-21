@@ -104,18 +104,18 @@ export default function Sidebar({
       </AnimatePresence>
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-76 md:w-80 h-full bg-slate-950 border-r border-white/5 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 overflow-hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-76 md:w-80 h-full bg-[#08080a] border-r border-amber-500/15 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 overflow-hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Top Header & New Chat button */}
-        <div className="p-3.5 space-y-3 shrink-0 border-b border-white/5">
+        <div className="p-3.5 space-y-3 shrink-0 border-b border-amber-500/10">
           <div className="flex items-center justify-between px-2 pt-1">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-md">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 rounded-xl bg-linear-to-br from-amber-400 via-yellow-500 to-amber-700 flex items-center justify-center shadow-md shadow-amber-500/20">
+                <Sparkles className="w-4 h-4 text-slate-950 font-bold" />
               </div>
-              <span className="font-bold text-white tracking-tight text-base">DocMind</span>
+              <span className="font-extrabold gold-gradient-text tracking-tight text-base">DocMind</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -131,13 +131,13 @@ export default function Sidebar({
               onCreateConversation();
               setSidebarOpen(false);
             }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-white font-medium text-xs md:text-sm transition-all group shadow-sm active:scale-98"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 to-yellow-500/10 hover:from-amber-500/25 hover:to-yellow-500/20 border border-amber-500/30 hover:border-amber-400/50 text-amber-200 font-medium text-xs md:text-sm transition-all group shadow-sm active:scale-98"
           >
             <div className="flex items-center gap-2.5">
-              <Plus className="w-4 h-4 text-brand-primary group-hover:scale-110 transition-transform" />
+              <Plus className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
               <span>New Conversation</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono hidden md:inline">Ctrl+K</span>
+            <span className="text-[10px] text-amber-400/60 font-mono hidden md:inline">Ctrl+K</span>
           </button>
 
           {/* Search Input */}
@@ -148,7 +148,7 @@ export default function Sidebar({
               placeholder="Search chats..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-brand-primary/50 transition-colors"
+              className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-colors"
             />
             {searchQuery && (
               <button
@@ -185,12 +185,12 @@ export default function Sidebar({
                         }}
                         className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
                           isActive
-                            ? "bg-white/10 text-white font-medium shadow-xs"
+                            ? "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-l-2 border-amber-400 text-white font-medium shadow-xs"
                             : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                         }`}
                       >
                         <div className="flex items-center gap-2.5 truncate flex-1 min-w-0 pr-1">
-                          <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-brand-primary" : "text-slate-500"}`} />
+                          <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-amber-400" : "text-slate-500"}`} />
                           {isEditing ? (
                             <input
                               type="text"
@@ -202,14 +202,14 @@ export default function Sidebar({
                                 if (e.key === "Escape") cancelRename(e);
                               }}
                               autoFocus
-                              className="bg-slate-900 border border-brand-primary/50 text-white rounded px-1.5 py-0.5 text-xs w-full outline-none"
+                              className="bg-black/90 border border-amber-500/50 text-white rounded px-1.5 py-0.5 text-xs w-full outline-none focus:ring-1 focus:ring-amber-500/30"
                             />
                           ) : (
                             <div className="flex items-center gap-1.5 truncate">
                               <span className="truncate">{conv.title}</span>
                               {conv.selected_doc_ids && conv.selected_doc_ids.length > 0 && (
                                 <span
-                                  className="text-[10px] bg-brand-primary/20 text-brand-primary px-1.5 py-0.2 rounded-md font-mono shrink-0 flex items-center gap-0.5 border border-brand-primary/30"
+                                  className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-md font-mono shrink-0 flex items-center gap-0.5 border border-amber-500/30"
                                   title={`${conv.selected_doc_ids.length} document(s) in this chat's knowledge base`}
                                 >
                                   <FileText className="w-2.5 h-2.5" />
@@ -274,14 +274,14 @@ export default function Sidebar({
           </div>
 
           {/* Knowledge Base / Document Library Section */}
-          <div className="pt-3 border-t border-white/5 space-y-2">
+          <div className="pt-3 border-t border-amber-500/10 space-y-2">
             <div className="flex items-center justify-between px-2">
               <button
                 onClick={() => setShowDocs(!showDocs)}
                 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-colors"
               >
                 {showDocs ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                <Database className="w-3.5 h-3.5 text-brand-secondary" />
+                <Database className="w-3.5 h-3.5 text-amber-400" />
                 <span>Document Library</span>
                 <span className="text-[10px] bg-white/10 text-slate-400 px-1.5 py-0.2 rounded-full font-mono">
                   {documents.length}
@@ -290,7 +290,7 @@ export default function Sidebar({
 
               <button
                 onClick={onOpenUploadModal}
-                className="p-1 hover:bg-white/10 text-brand-secondary rounded-lg transition-colors flex items-center gap-1 text-[11px]"
+                className="p-1 hover:bg-amber-500/10 text-amber-400 hover:text-amber-300 rounded-lg transition-colors flex items-center gap-1 text-[11px]"
                 title="Upload document"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -313,7 +313,7 @@ export default function Sidebar({
                       onClick={() => onToggleDocFilter(doc.id)}
                       className={`group flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-all ${
                         isAttached
-                          ? "bg-brand-primary/15 border border-brand-primary/40 text-white"
+                          ? "bg-amber-500/15 border border-amber-500/40 text-white"
                           : "text-slate-400 hover:bg-white/5 hover:text-slate-300 border border-transparent"
                       }`}
                       title={isAttached ? "Attached to current chat (click to detach)" : "Click to attach to current chat"}
@@ -324,21 +324,21 @@ export default function Sidebar({
                             e.stopPropagation();
                             onToggleDocFilter(doc.id);
                           }}
-                          className="shrink-0 text-slate-500 hover:text-brand-primary"
+                          className="shrink-0 text-slate-500 hover:text-amber-400"
                         >
                           {isAttached ? (
-                            <CheckSquare className="w-3.5 h-3.5 text-brand-primary" />
+                            <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
                           ) : (
                             <Square className="w-3.5 h-3.5" />
                           )}
                         </button>
-                        <FileText className="w-3.5 h-3.5 shrink-0 text-brand-secondary" />
+                        <FileText className="w-3.5 h-3.5 shrink-0 text-amber-300" />
                         <span className="truncate text-[11px]">{doc.filename}</span>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
                         {isAttached && (
-                          <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded font-medium">
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded font-medium border border-amber-500/30">
                             in chat
                           </span>
                         )}
@@ -363,7 +363,7 @@ export default function Sidebar({
                 {documents.length === 0 && (
                   <div
                     onClick={onOpenUploadModal}
-                    className="p-3 border border-dashed border-white/10 rounded-xl text-center text-[11px] text-slate-500 cursor-pointer hover:border-brand-primary/40 hover:text-slate-300 transition-colors"
+                    className="p-3 border border-dashed border-amber-500/20 rounded-xl text-center text-[11px] text-slate-500 cursor-pointer hover:border-amber-400/50 hover:text-amber-200 transition-colors"
                   >
                     No documents yet. Click to upload PDF, DOCX, TXT, etc.
                   </div>
@@ -374,9 +374,9 @@ export default function Sidebar({
         </div>
 
         {/* Bottom User Profile & Logout */}
-        <div className="p-3 border-t border-white/5 shrink-0 flex items-center justify-between bg-slate-950/80">
+        <div className="p-3 border-t border-amber-500/15 shrink-0 flex items-center justify-between bg-black/90">
           <div className="flex items-center gap-2.5 truncate">
-            <div className="w-8 h-8 rounded-full bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white text-xs font-bold uppercase shrink-0">
+            <div className="w-8 h-8 rounded-full bg-linear-to-br from-amber-400 via-yellow-500 to-amber-700 flex items-center justify-center text-slate-950 text-xs font-bold uppercase shrink-0 shadow-md shadow-amber-500/20">
               {user?.username ? user.username[0] : "U"}
             </div>
             <div className="truncate">

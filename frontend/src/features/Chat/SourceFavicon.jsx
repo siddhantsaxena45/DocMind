@@ -64,7 +64,7 @@ export const SourceFavicon = ({
   siteName = "",
   isWeb = true,
   className = "w-3.5 h-3.5 rounded-full object-cover shrink-0",
-  fallbackClassName = "w-3.5 h-3.5 text-cyan-400 shrink-0",
+  fallbackClassName = "w-3.5 h-3.5 text-amber-400 shrink-0",
 }) => {
   const [hasError, setHasError] = useState(false);
   const safeSrc = useMemo(() => (isWeb ? getSafeFavicon(src, url) : ""), [src, url, isWeb]);
@@ -102,10 +102,10 @@ export const StackedFaviconAvatar = ({
   if (!safeSrc || hasError) {
     return (
       <div
-        className="w-4 h-4 rounded-full ring-2 ring-slate-900 bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center shrink-0"
+        className="w-4 h-4 rounded-full ring-2 ring-[#08080a] bg-amber-950/80 border border-amber-500/30 flex items-center justify-center shrink-0"
         title={siteName || "Web source"}
       >
-        <Globe className="w-2.5 h-2.5 text-cyan-300" />
+        <Globe className="w-2.5 h-2.5 text-amber-300" />
       </div>
     );
   }
@@ -115,7 +115,7 @@ export const StackedFaviconAvatar = ({
       src={safeSrc}
       alt={siteName || ""}
       title={siteName || "Web source"}
-      className="w-4 h-4 rounded-full ring-2 ring-slate-900 object-cover bg-slate-800 shrink-0"
+      className="w-4 h-4 rounded-full ring-2 ring-[#08080a] object-cover bg-black shrink-0"
       onError={() => setHasError(true)}
       loading="lazy"
     />
