@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from app.api.models import (
     ConversationCreate, ConversationUpdate, ConversationItem,
     ConversationDetailResponse, MessageItem, SendMessageRequest,
-    SendMessageResponse, Citation
+    SendMessageResponse, Citation, EditMessageRequest
 )
 from app.core.database import get_db_conn
 from app.core.auth import get_current_user, AuthUser
@@ -344,7 +344,8 @@ async def stream_message(
     text: str = Query(...),
     token: str = Query(...),
     web_search: Optional[bool] = Query(None),
-    selected_docs: Optional[str] = Query(None)  # comma-separated doc IDs
+    selected_docs: Optional[str] = Query(None),  # comma-separated doc IDs
+    retry: Optional[bool] = Query(False)
 ):
     # Verify token
     try:
@@ -364,11 +365,46 @@ async def stream_message(
         conn.close()
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-    # Insert user message
-    cur.execute(
-        "INSERT INTO messages (conversation_id, user_id, role, content) VALUES (%s, %s, %s, %s)",
-        (conversation_id, user_id, "user", user_text)
-    )
+    if retry:
+        # Delete subsequent assistant message so it can be regenerated clean
+        cur.execute(
+            """
+            DELETE FROM messages
+            WHERE id IN (
+                SELECT id FROM messages
+                WHERE conversation_id = %s AND role = 'assistant'
+                ORDER BY created_at DESC LIMIT 1
+            )
+            """,
+            (conversation_id,)
+        )
+        # Update last user message or insert if none exists
+        cur.execute(
+            """
+            SELECT id, content FROM messages
+            WHERE conversation_id = %s AND role = 'user'
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            (conversation_id,)
+        )
+        last_u = cur.fetchone()
+        if last_u:
+            if last_u[1] != user_text:
+                cur.execute(
+                    "UPDATE messages SET content = %s WHERE id = %s",
+                    (user_text, last_u[0])
+                )
+        else:
+            cur.execute(
+                "INSERT INTO messages (conversation_id, user_id, role, content) VALUES (%s, %s, %s, %s)",
+                (conversation_id, user_id, "user", user_text)
+            )
+    else:
+        # Standard insert user message
+        cur.execute(
+            "INSERT INTO messages (conversation_id, user_id, role, content) VALUES (%s, %s, %s, %s)",
+            (conversation_id, user_id, "user", user_text)
+        )
 
     new_title = None
     if conv["title"] == "New Chat":
@@ -566,3 +602,54 @@ def regenerate_response(
         research_query=research_query,
         conversation_id=conversation_id
     )
+
+
+@router.put("/{conversation_id}/messages/last")
+def edit_last_user_message(
+    conversation_id: str,
+    req: EditMessageRequest,
+    current_user: AuthUser = Depends(get_current_user)
+):
+    conn = get_db_conn()
+    cur = conn.cursor()
+    _verify_conversation_owner(cur, conversation_id, current_user.user_id)
+
+    new_text = req.content.strip()
+    if not new_text:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail="Message content cannot be empty")
+
+    cur.execute(
+        "SELECT id FROM messages WHERE conversation_id = %s AND role = 'user' ORDER BY created_at DESC LIMIT 1",
+        (conversation_id,)
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=404, detail="No user message found to edit")
+
+    last_user_msg_id = row[0]
+    cur.execute(
+        "UPDATE messages SET content = %s WHERE id = %s",
+        (new_text, last_user_msg_id)
+    )
+
+    # Delete subsequent assistant message if present so it can be regenerated fresh
+    cur.execute(
+        """
+        DELETE FROM messages
+        WHERE id IN (
+            SELECT id FROM messages
+            WHERE conversation_id = %s AND role = 'assistant'
+            ORDER BY created_at DESC LIMIT 1
+        )
+        """,
+        (conversation_id,)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": "Last message updated successfully", "message_id": str(last_user_msg_id)}
+

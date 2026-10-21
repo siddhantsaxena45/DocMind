@@ -3,7 +3,8 @@ import {
   Send, Bot, User, Loader2, Sparkles, Quote, Globe, Share2,
   Copy, Check, RotateCcw, Menu, ExternalLink, ChevronDown,
   Paperclip, ArrowUp, AlertCircle, FileText, Database, Plus, X,
-  Search, Shield, CheckCircle2, Trash2, ThumbsUp, ThumbsDown
+  Search, Shield, CheckCircle2, Trash2, ThumbsUp, ThumbsDown,
+  Pencil
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../api";
@@ -60,6 +61,8 @@ export default function ChatView({
   const [docSearchQuery, setDocSearchQuery] = useState("");
   const [activeSourcesModal, setActiveSourcesModal] = useState(null);
   const [feedbackMap, setFeedbackMap] = useState({});
+  const [editingMsgIdx, setEditingMsgIdx] = useState(null);
+  const [editContent, setEditContent] = useState("");
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -129,40 +132,13 @@ export default function ChatView({
     }
   };
 
-  const handleSend = async (customPrompt = null) => {
-    const textToSend = (customPrompt || input).trim();
-    if (!textToSend || !conversation?.id || streaming) return;
-
-    setInput("");
-    setError(null);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
-    // 1. Optimistically append user message
-    const userMsg = {
-      id: `tmp_${Date.now()}`,
-      role: "user",
-      content: textToSend,
-      sources: [],
-      created_at: new Date().toISOString()
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
+  const startStream = async (textToSend, { isRetry = false } = {}) => {
+    if (!textToSend || !conversation?.id) return;
     setStreaming(true);
+    setError(null);
 
     const auth = loadAuth();
     const token = auth?.token;
-
-    // 2. Prepare streaming assistant placeholder
-    const assistantMsgPlaceholder = {
-      id: `ai_${Date.now()}`,
-      role: "assistant",
-      content: "",
-      sources: [],
-      created_at: new Date().toISOString()
-    };
-    setMessages((prev) => [...prev, assistantMsgPlaceholder]);
 
     // Construct stream URL
     const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -171,6 +147,9 @@ export default function ChatView({
     url.searchParams.set("text", textToSend);
     url.searchParams.set("token", token || "");
     url.searchParams.set("web_search", String(conversation.web_search_enabled));
+    if (isRetry) {
+      url.searchParams.set("retry", "true");
+    }
     if (selectedDocsQuery) {
       url.searchParams.set("selected_docs", selectedDocsQuery);
     } else {
@@ -248,7 +227,7 @@ export default function ChatView({
                   if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
                     updated[lastIdx] = {
                       ...updated[lastIdx],
-                      content: updated[lastIdx].content + parsed.chunk
+                      content: (updated[lastIdx].content || "") + parsed.chunk
                     };
                   }
                   return updated;
@@ -290,14 +269,18 @@ export default function ChatView({
       if (err.name === "AbortError") {
         console.log("Stream stopped by user");
       } else {
-        console.error("Stream error, falling back to standard POST:", err);
-        // Fallback to standard POST
+        console.error("Stream error, falling back to standard API:", err);
         try {
-          const fallbackRes = await api.conversations.sendMessage(conversation.id, {
-            text: textToSend,
-            web_search: conversation.web_search_enabled,
-            selected_doc_ids: conversation.selected_doc_ids || []
-          });
+          let fallbackRes;
+          if (isRetry) {
+            fallbackRes = await api.conversations.regenerate(conversation.id);
+          } else {
+            fallbackRes = await api.conversations.sendMessage(conversation.id, {
+              text: textToSend,
+              web_search: conversation.web_search_enabled,
+              selected_doc_ids: conversation.selected_doc_ids || []
+            });
+          }
 
           setMessages((prev) => {
             const updated = [...prev];
@@ -325,6 +308,38 @@ export default function ChatView({
     }
   };
 
+  const handleSend = async (customPrompt = null) => {
+    const textToSend = (customPrompt || input).trim();
+    if (!textToSend || !conversation?.id || streaming) return;
+
+    setInput("");
+    setError(null);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+
+    // 1. Optimistically append user message
+    const userMsg = {
+      id: `tmp_${Date.now()}`,
+      role: "user",
+      content: textToSend,
+      sources: [],
+      created_at: new Date().toISOString()
+    };
+
+    // 2. Prepare streaming assistant placeholder
+    const assistantMsgPlaceholder = {
+      id: `ai_${Date.now()}`,
+      role: "assistant",
+      content: "",
+      sources: [],
+      created_at: new Date().toISOString()
+    };
+
+    setMessages((prev) => [...prev, userMsg, assistantMsgPlaceholder]);
+    await startStream(textToSend, { isRetry: false });
+  };
+
   const handleStopStream = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -333,30 +348,61 @@ export default function ChatView({
 
   const handleRegenerate = async () => {
     if (streaming || !conversation?.id) return;
-    setStreaming(true);
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg) return;
+
     setError(null);
-    try {
-      const res = await api.conversations.regenerate(conversation.id);
-      setMessages((prev) => {
-        const withoutLastAi = prev.filter((m, i) => !(i === prev.length - 1 && m.role === "assistant"));
-        return [
-          ...withoutLastAi,
-          {
-            id: res.message_id,
-            role: "assistant",
-            content: res.answer,
-            sources: res.sources,
-            related_questions: res.related_questions || [],
-            research_query: res.research_query,
-            created_at: new Date().toISOString()
-          }
-        ];
-      });
-    } catch (err) {
-      setError(err.message || "Regeneration failed");
-    } finally {
-      setStreaming(false);
-    }
+
+    // Immediately replace last assistant message with an active thinking placeholder
+    setMessages((prev) => {
+      const withoutLastAi = prev.filter((m, i) => !(i === prev.length - 1 && m.role === "assistant"));
+      return [
+        ...withoutLastAi,
+        {
+          id: `ai_${Date.now()}`,
+          role: "assistant",
+          content: "",
+          sources: [],
+          research_query: lastUserMsg.content.slice(0, 40),
+          created_at: new Date().toISOString()
+        }
+      ];
+    });
+
+    await startStream(lastUserMsg.content, { isRetry: true });
+  };
+
+  const handleSaveEdit = async (msgIdx, newText) => {
+    const trimmed = newText.trim();
+    if (!trimmed || streaming || !conversation?.id) return;
+    setEditingMsgIdx(null);
+
+    // If text didn't change, do nothing
+    if (trimmed === messages[msgIdx]?.content) return;
+
+    setError(null);
+
+    // Truncate messages after this edited message and attach a new streaming assistant placeholder
+    setMessages((prev) => {
+      const truncated = prev.slice(0, msgIdx + 1);
+      truncated[msgIdx] = {
+        ...truncated[msgIdx],
+        content: trimmed
+      };
+      return [
+        ...truncated,
+        {
+          id: `ai_${Date.now()}`,
+          role: "assistant",
+          content: "",
+          sources: [],
+          research_query: trimmed.slice(0, 40),
+          created_at: new Date().toISOString()
+        }
+      ];
+    });
+
+    await startStream(trimmed, { isRetry: true });
   };
 
   const handleCopyMessage = (text, idx) => {
@@ -465,9 +511,19 @@ export default function ChatView({
       {/* Message List / Empty State */}
       <div className="flex-1 overflow-y-auto px-4 py-6 md:p-8 space-y-6 custom-scrollbar min-h-0">
         {error && (
-          <div className="max-w-3xl mx-auto p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div className="max-w-3xl mx-auto p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+              <span className="truncate">{error}</span>
+            </div>
+            <button
+              onClick={handleRegenerate}
+              disabled={streaming}
+              className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white font-medium flex items-center gap-1.5 transition-colors shrink-0 disabled:opacity-50"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Retry</span>
+            </button>
           </div>
         )}
 
@@ -587,7 +643,77 @@ export default function ChatView({
                   }`}
                 >
                   {isUser ? (
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                    editingMsgIdx === idx ? (
+                      <div className="space-y-2.5 w-full min-w-[280px] sm:min-w-[420px]">
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSaveEdit(idx, editContent);
+                            } else if (e.key === "Escape") {
+                              setEditingMsgIdx(null);
+                            }
+                          }}
+                          rows={Math.max(2, Math.min(8, editContent.split("\n").length + 1))}
+                          className="w-full bg-slate-900/90 border border-white/20 focus:border-white/50 rounded-xl p-3 text-xs md:text-sm text-white placeholder-slate-400 focus:outline-none resize-none transition-all shadow-inner"
+                          placeholder="Edit your message..."
+                          autoFocus
+                        />
+                        <div className="flex items-center justify-end gap-2 text-xs">
+                          <button
+                            onClick={() => setEditingMsgIdx(null)}
+                            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleSaveEdit(idx, editContent)}
+                            disabled={!editContent.trim() || streaming}
+                            className="px-3.5 py-1.5 rounded-lg bg-white text-slate-950 font-medium hover:bg-slate-100 transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            Save & Submit
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="group relative">
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        {!streaming && (
+                          <div className="mt-2.5 pt-2 border-t border-white/15 flex items-center justify-end gap-1.5 text-white/80 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                setEditingMsgIdx(idx);
+                                setEditContent(msg.content);
+                              }}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-white/20 text-[11px] font-medium transition-colors"
+                              title="Edit message"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleCopyMessage(msg.content, idx)}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-white/20 text-[11px] font-medium transition-colors"
+                              title="Copy prompt"
+                            >
+                              {copiedMsgIdx === idx ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-300" />
+                                  <span className="text-emerald-300">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
                   ) : (
                     <div className="space-y-3">
                       {/* 1. Research Status Header (Perplexity Collapsible Accordion with Stacked Favicons) */}
@@ -634,35 +760,38 @@ export default function ChatView({
                       )}
 
                       {/* 5. Modern Action Toolbar (Copy, Try again, Thumbs Up/Down) */}
-                      {!streaming && msg.content && (
+                      {(!streaming || isLastMessage) && (msg.content || isLastMessage) && (
                         <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
                           <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => handleCopyMessage(msg.content, idx)}
-                              className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
-                              title="Copy response"
-                            >
-                              {copiedMsgIdx === idx ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                  <span className="text-[11px] text-emerald-400 font-medium">Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3.5 h-3.5" />
-                                  <span className="text-[11px]">Copy</span>
-                                </>
-                              )}
-                            </button>
+                            {msg.content && (
+                              <button
+                                onClick={() => handleCopyMessage(msg.content, idx)}
+                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
+                                title="Copy response"
+                              >
+                                {copiedMsgIdx === idx ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span className="text-[11px] text-emerald-400 font-medium">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span className="text-[11px]">Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
 
                             {isLastMessage && (
                               <button
                                 onClick={handleRegenerate}
-                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5"
+                                disabled={streaming}
+                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-lg hover:bg-white/5 disabled:opacity-50"
                                 title="Regenerate answer"
                               >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                                <span className="text-[11px]">Try again</span>
+                                <RotateCcw className={`w-3.5 h-3.5 ${streaming ? "animate-spin text-brand-primary" : ""}`} />
+                                <span className="text-[11px]">{streaming ? "Regenerating..." : "Try again"}</span>
                               </button>
                             )}
                           </div>

@@ -63,6 +63,7 @@ export const api = {
     delete: (conversationId) => request(`/api/conversations/${conversationId}`, { method: "DELETE" }),
     sendMessage: (conversationId, data) => request(`/api/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(data) }),
     regenerate: (conversationId) => request(`/api/conversations/${conversationId}/regenerate`, { method: "POST" }),
+    editLastMessage: (conversationId, content) => request(`/api/conversations/${conversationId}/messages/last`, { method: "PUT", body: JSON.stringify({ content }) }),
   },
 
   // Sharing

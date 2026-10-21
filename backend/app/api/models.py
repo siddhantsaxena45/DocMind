@@ -62,6 +62,9 @@ class MessageItem(BaseModel):
     research_query: Optional[str] = None
     created_at: str
 
+class EditMessageRequest(BaseModel):
+    content: str = Field(..., min_length=1)
+
 class SendMessageRequest(BaseModel):
     text: str = Field(..., min_length=1)
     web_search: Optional[bool] = None
