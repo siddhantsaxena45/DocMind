@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronUp, Globe, FileText, Search, ExternalLink } from "lucide-react";
+import { StackedFaviconAvatar } from "./SourceFavicon";
 
 export default function ResearchStatusBar({
   researchQuery,
@@ -18,11 +19,6 @@ export default function ResearchStatusBar({
 
   const webSources = displaySources.filter((s) => s.type === "web");
   const docSources = displaySources.filter((s) => s.type === "doc");
-
-  const favicons = webSources
-    .map((s) => s.favicon)
-    .filter(Boolean)
-    .filter((v, idx, arr) => arr.indexOf(v) === idx);
 
   const displayQuery = researchQuery || (sources.length > 0 ? "sources & document intelligence" : "knowledge base");
 
@@ -52,18 +48,15 @@ export default function ResearchStatusBar({
         {sources.length > 0 && (
           <div className="flex items-center gap-1.5 shrink-0 pl-2">
             <div className="flex items-center -space-x-1.5 overflow-hidden">
-              {favicons.slice(0, 3).map((fav, i) => (
-                <img
-                  key={i}
-                  src={fav}
-                  alt=""
-                  className="w-4 h-4 rounded-full ring-2 ring-slate-900 object-cover bg-slate-800"
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                  }}
+              {webSources.slice(0, 3).map((s, i) => (
+                <StackedFaviconAvatar
+                  key={s.url || s.favicon || i}
+                  src={s.favicon}
+                  url={s.url}
+                  siteName={s.site_name}
                 />
               ))}
-              {docSources.length > 0 && favicons.length < 3 && (
+              {docSources.length > 0 && webSources.length < 3 && (
                 <div className="w-4 h-4 rounded-full ring-2 ring-slate-900 bg-brand-primary/20 flex items-center justify-center text-[9px] text-brand-primary font-bold">
                   <FileText className="w-2.5 h-2.5" />
                 </div>

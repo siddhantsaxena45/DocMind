@@ -1,5 +1,6 @@
 import React from "react";
-import { Globe, FileText, ExternalLink, Search, CheckCircle2, ArrowRight } from "lucide-react";
+import { ExternalLink, Search, CheckCircle2, ArrowRight } from "lucide-react";
+import { SourceFavicon } from "./SourceFavicon";
 
 export default function SourceCardsCarousel({
   sources = [],
@@ -65,20 +66,14 @@ export default function SourceCardsCarousel({
                     </span>
 
                     {/* Favicon or Doc Icon */}
-                    {src.favicon ? (
-                      <img
-                        src={src.favicon}
-                        alt=""
-                        className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                    ) : isWeb ? (
-                      <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    ) : (
-                      <FileText className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                    )}
+                    <SourceFavicon
+                      src={src.favicon}
+                      url={src.url}
+                      siteName={siteLabel}
+                      isWeb={isWeb}
+                      className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                      fallbackClassName={isWeb ? "w-3.5 h-3.5 text-cyan-400 shrink-0" : "w-3.5 h-3.5 text-brand-primary shrink-0"}
+                    />
 
                     <span className="text-[11px] font-medium text-slate-300 group-hover:text-white truncate">
                       {siteLabel}

@@ -68,7 +68,8 @@ def is_result_relevant(title: str, snippet: str, url: str, query: str) -> bool:
 def extract_site_metadata(url: str) -> tuple[str, str]:
     """
     Returns (site_name, favicon_url)
-    e.g. ("YouTube", "https://www.google.com/s2/favicons?domain=youtube.com&sz=64")
+    Uses unavatar.io to resolve high-res favicons with automatic SVG fallback,
+    preventing 404 network errors associated with legacy Google S2.
     """
     try:
         parsed = urlparse(url)
@@ -79,43 +80,43 @@ def extract_site_metadata(url: str) -> tuple[str, str]:
         # YouTube detection
         if "youtube.com" in domain or "youtu.be" in domain:
             site_name = "YouTube"
-            favicon = "https://www.google.com/s2/favicons?domain=youtube.com&sz=64"
+            favicon = "https://unavatar.io/youtube.com"
             return site_name, favicon
 
         # Kick detection
         if "kick.com" in domain:
             site_name = "Kick"
-            favicon = "https://www.google.com/s2/favicons?domain=kick.com&sz=64"
+            favicon = "https://unavatar.io/kick.com"
             return site_name, favicon
 
         # Twitch detection
         if "twitch.tv" in domain:
             site_name = "Twitch"
-            favicon = "https://www.google.com/s2/favicons?domain=twitch.tv&sz=64"
+            favicon = "https://unavatar.io/twitch.tv"
             return site_name, favicon
 
         # GitHub detection
         if "github.com" in domain:
             site_name = "GitHub"
-            favicon = "https://www.google.com/s2/favicons?domain=github.com&sz=64"
+            favicon = "https://unavatar.io/github.com"
             return site_name, favicon
 
         # Wikipedia detection
         if "wikipedia.org" in domain:
             site_name = "Wikipedia"
-            favicon = "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64"
+            favicon = "https://unavatar.io/wikipedia.org"
             return site_name, favicon
 
         # Twitter / X detection
         if "twitter.com" in domain or "x.com" in domain:
             site_name = "X (Twitter)"
-            favicon = "https://www.google.com/s2/favicons?domain=x.com&sz=64"
+            favicon = "https://unavatar.io/x.com"
             return site_name, favicon
 
         # LinkedIn detection
         if "linkedin.com" in domain:
             site_name = "LinkedIn"
-            favicon = "https://www.google.com/s2/favicons?domain=linkedin.com&sz=64"
+            favicon = "https://unavatar.io/linkedin.com"
             return site_name, favicon
 
         # Subreddit detection
@@ -125,10 +126,11 @@ def extract_site_metadata(url: str) -> tuple[str, str]:
                 site_name = f"r/{match.group(1)}"
             else:
                 site_name = "reddit.com"
+            return site_name, "https://unavatar.io/reddit.com"
         else:
             site_name = domain
 
-        favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+        favicon = f"https://unavatar.io/{domain}" if domain else ""
         return site_name, favicon
     except Exception:
         return "Web", ""
@@ -445,7 +447,7 @@ class WebSearchService:
                                 "url": channel_url,
                                 "snippet": f"Official Kick Channel: {slug}. Verified Kick Creator{live_str}{f_str}. Bio: {bio}".strip(),
                                 "site_name": "Kick",
-                                "favicon": "https://www.google.com/s2/favicons?domain=kick.com&sz=64",
+                                "favicon": "https://unavatar.io/kick.com",
                                 "type": "web"
                             })
                             if len(results) >= max_results:
@@ -468,7 +470,7 @@ class WebSearchService:
                             "url": channel_url,
                             "snippet": f"Official Kick Channel for {slug}: {desc_text}".strip(),
                             "site_name": "Kick",
-                            "favicon": "https://www.google.com/s2/favicons?domain=kick.com&sz=64",
+                            "favicon": "https://unavatar.io/kick.com",
                             "type": "web"
                         })
                         if len(results) >= max_results:
@@ -599,7 +601,8 @@ class WebSearchService:
                                 continue
 
                             site_name = publisher or "Google News"
-                            favicon = f"https://www.google.com/s2/favicons?domain={urlparse(link).netloc}&sz=64" if link else ""
+                            netloc = urlparse(link).netloc.lower().replace("www.", "")
+                            favicon = f"https://unavatar.io/{netloc}" if netloc else ""
 
                             results.append({
                                 "title": title[:110],
@@ -692,7 +695,7 @@ class WebSearchService:
                                     "url": u,
                                     "snippet": d[:500] if d else f"Wikipedia article for {t}.",
                                     "site_name": "Wikipedia",
-                                    "favicon": "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64",
+                                    "favicon": "https://unavatar.io/wikipedia.org",
                                     "type": "web"
                                 })
         except Exception as e:
@@ -728,7 +731,7 @@ class WebSearchService:
                             "url": html_url,
                             "snippet": f"GitHub Repository: {name}{meta_info}. {desc}".strip(),
                             "site_name": "GitHub",
-                            "favicon": "https://www.google.com/s2/favicons?domain=github.com&sz=64",
+                            "favicon": "https://unavatar.io/github.com",
                             "type": "web"
                         })
         except Exception as e:
@@ -761,7 +764,7 @@ class WebSearchService:
                                 "url": f"https://www.reddit.com{permalink}",
                                 "snippet": f"{subreddit} discussion: {title}. {selftext}".strip(),
                                 "site_name": subreddit,
-                                "favicon": "https://www.google.com/s2/favicons?domain=reddit.com&sz=64",
+                                "favicon": "https://unavatar.io/reddit.com",
                                 "type": "web"
                             })
         except Exception as e:
@@ -816,7 +819,7 @@ class WebSearchService:
                                         "url": ch_url,
                                         "snippet": f"Official YouTube Channel: {title}. {subs}. {desc}".strip(),
                                         "site_name": "YouTube",
-                                        "favicon": "https://www.google.com/s2/favicons?domain=youtube.com&sz=64",
+                                        "favicon": "https://unavatar.io/youtube.com",
                                         "type": "web"
                                     })
                                 # Video result
@@ -834,7 +837,7 @@ class WebSearchService:
                                         "url": vid_url,
                                         "snippet": f"YouTube video by {ch_name}: {v_title}. {desc_snippet}".strip(),
                                         "site_name": "YouTube",
-                                        "favicon": "https://www.google.com/s2/favicons?domain=youtube.com&sz=64",
+                                        "favicon": "https://unavatar.io/youtube.com",
                                         "type": "web"
                                     })
                                 if len(results) >= max_results:
@@ -872,7 +875,7 @@ class WebSearchService:
                                 "title": f"{w_title} - Wikipedia",
                                 "snippet": extract[:1800],
                                 "site_name": "Wikipedia",
-                                "favicon": favicon or "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64",
+                                "favicon": favicon or "https://unavatar.io/wikipedia.org",
                                 "type": "web"
                             }
             except Exception as e:
@@ -948,7 +951,7 @@ class WebSearchService:
                         "title": title[:100],
                         "snippet": desc_text[:1500] if desc_text else "Kick Live Stream Channel",
                         "site_name": "Kick",
-                        "favicon": favicon or "https://www.google.com/s2/favicons?domain=kick.com&sz=64",
+                        "favicon": favicon or "https://unavatar.io/kick.com",
                         "type": "web"
                     }
 

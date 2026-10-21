@@ -76,6 +76,9 @@ def clean_url(url: Optional[str]) -> Optional[str]:
     elif re.search(r'^[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)+\.(?:com|org|net|edu|gov)/[^\s]+$', u, re.IGNORECASE):
         u = "https://" + u
 
+    if u.startswith("http://") and not any(loc in u.lower() for loc in ["localhost", "127.0.0.1", "0.0.0.0"]):
+        u = "https://" + u[7:]
+
     if not (u.startswith("http://") or u.startswith("https://") or u.startswith("mailto:")):
         return None
 

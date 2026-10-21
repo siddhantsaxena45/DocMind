@@ -1,5 +1,6 @@
 import React from "react";
-import { X, Globe, FileText, ExternalLink, Search, CheckCircle2 } from "lucide-react";
+import { X, ExternalLink, Search, CheckCircle2 } from "lucide-react";
+import { SourceFavicon } from "./SourceFavicon";
 
 export default function AllSourcesModal({
   isOpen,
@@ -78,20 +79,14 @@ export default function AllSourcesModal({
                       </span>
                     )}
 
-                    {src.favicon ? (
-                      <img
-                        src={src.favicon}
-                        alt=""
-                        className="w-4 h-4 rounded-full object-cover shrink-0"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                    ) : isWeb ? (
-                      <Globe className="w-4 h-4 text-cyan-400 shrink-0" />
-                    ) : (
-                      <FileText className="w-4 h-4 text-brand-primary shrink-0" />
-                    )}
+                    <SourceFavicon
+                      src={src.favicon}
+                      url={src.url}
+                      siteName={siteLabel}
+                      isWeb={isWeb}
+                      className="w-4 h-4 rounded-full object-cover shrink-0"
+                      fallbackClassName={isWeb ? "w-4 h-4 text-cyan-400 shrink-0" : "w-4 h-4 text-brand-primary shrink-0"}
+                    />
                     <span className="text-xs font-semibold text-slate-200 truncate">
                       {siteLabel}
                     </span>

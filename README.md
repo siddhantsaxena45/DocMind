@@ -139,7 +139,7 @@ To eliminate hallucinated or misleading source cards:
 * **Interactive Source Pill Navigation:** Clicking `[1]` or `[2]` inside the text smoothly scrolls to the corresponding card in the carousel and adds an animated pulse ring.
 * **Clutter-Free Text:** Strips clumsy internal reference tokens (`[[WEB_REF_1]]`) and document tags (`[Doc: ...]`, `([Doc: ...])`), keeping sentences clean and professional.
 * **Anti-Spam Guard:** E-commerce marketplace links (AliExpress, Temu, Alibaba) and stock ticker aggregators (MarketWatch, SeekingAlpha) are strictly blocked from general research citations.
-* **Rich Source Cards:** Cards display Google S2 64px domain favicons, platform badges (`YouTube`, `Kick`, `GitHub`, `Wikipedia`, `r/subreddit`), 2-line title clamps, and a click-through URL.
+* **Rich Source Cards:** Cards display high-res domain favicons (via resilient Unavatar engine with automatic SVG and Lucide fallback), platform badges (`YouTube`, `Kick`, `GitHub`, `Wikipedia`, `r/subreddit`), 2-line title clamps, and a click-through URL.
 * **All Sources Modal:** Users can click `All Evaluated Sources` to inspect every link considered during the research phase.
 
 ---
@@ -261,7 +261,7 @@ To eliminate hallucinated or misleading source cards:
 | **Web Search Cascade** | **`ddgs`, Bing HTML, Google News RSS, DDG Lite** | Multi-engine search cascade eliminating cloud datacenter timeouts |
 | **Platform APIs** | **Kick, Twitch, GitHub, Reddit, YouTube, Wikipedia** | Real-time social profile, repository, and community data |
 | **Parallel Scraper** | **ThreadPoolExecutor + httpx + lxml** | Scrapes articles, headings, and data tables across distinct domains |
-| **Favicon Engine** | **Google S2 Favicon CDN** | Dynamic 64px website favicons for all verified domains |
+| **Favicon Engine** | **Unavatar CDN & SVG Fallback** | Dynamic high-res website favicons with deterministic SVG fallbacks for 100% 200 OK reliability |
 | **Auth & Security** | **JWT (python-jose) + Passlib** | Stateless token auth with PBKDF2 password hashing |
 
 ---
