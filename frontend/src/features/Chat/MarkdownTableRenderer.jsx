@@ -27,9 +27,17 @@ export function formatCitationBadges(rawText) {
         return part;
       }
 
+      // 0. Clean up clumsy [Doc: ...] and ([Doc: ...]) tags from the UI output
+      // e.g. "([Doc: Siddhant Saxena mciro1.pdf])" -> ""
+      // e.g. "[Doc: Siddhant Saxena mciro1.pdf, Page 1]" -> ""
+      let formatted = part.replace(/\s*\(\s*\[(?:Doc|Document):\s*[^\]]+\]\s*\)/gi, "");
+      formatted = formatted.replace(/\s*\[(?:Doc|Document):\s*[^\]]+\]/gi, "");
+      // Clean up punctuation spacing left behind (e.g. "word  ." -> "word.")
+      formatted = formatted.replace(/\s+([.,;:!?])/g, "$1");
+
       // 1. Match compound/nested citations containing WEB_REF_ or LIVE_LINK_
       // e.g. [[WEB_REF_1], [WEB_REF_4]], [[WEB_REF_1]], [WEB_REF_1], [[LIVE_LINK_1]]
-      let formatted = part.replace(
+      formatted = formatted.replace(
         /(?<!\w)\[+[\s\[]*(?:WEB_REF_|LIVE_LINK_)\d+[^\]]*?\]+(?!\s*\()/gi,
         (match) => {
           const nums = match.match(/\d+/g);
@@ -119,22 +127,39 @@ function renderCitationLink(href, children) {
 function InlineCell({ text }) {
   if (!text) return null;
   const formatted = formatCitationBadges(text);
+  // Split on <br>, <br/>, <br />, <BR> so raw HTML tags are never rendered literally
+  const lines = formatted.split(/<br\s*\/?>/gi);
+
+  const markdownComponents = {
+    p: ({ children }) => <span>{children}</span>,
+    strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+    em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
+    code: ({ children }) => (
+      <code className="bg-white/10 px-1 py-0.5 rounded text-[11px] font-mono text-cyan-300">
+        {children}
+      </code>
+    ),
+    a: ({ href, children }) => renderCitationLink(href, children)
+  };
+
+  if (lines.length === 1) {
+    return (
+      <ReactMarkdown components={markdownComponents}>
+        {lines[0]}
+      </ReactMarkdown>
+    );
+  }
+
   return (
-    <ReactMarkdown
-      components={{
-        p: ({ children }) => <span>{children}</span>,
-        strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-        em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
-        code: ({ children }) => (
-          <code className="bg-white/10 px-1 py-0.5 rounded text-[11px] font-mono text-cyan-300">
-            {children}
-          </code>
-        ),
-        a: ({ href, children }) => renderCitationLink(href, children)
-      }}
-    >
-      {formatted}
-    </ReactMarkdown>
+    <div className="space-y-1">
+      {lines.map((line, idx) => (
+        <div key={idx} className={idx === 0 ? "font-semibold text-white" : "text-slate-300 leading-relaxed"}>
+          <ReactMarkdown components={markdownComponents}>
+            {line}
+          </ReactMarkdown>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -344,7 +369,7 @@ export default function MarkdownTableRenderer({ content, messageIdx = 0 }) {
                 a: ({ href, children }) => renderCitationLink(href, children)
               }}
             >
-              {block.text}
+              {((block.text || "").replace(/<br\s*\/?>/gi, "  \n"))}
             </ReactMarkdown>
           </div>
         );

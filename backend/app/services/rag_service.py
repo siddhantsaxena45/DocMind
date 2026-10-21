@@ -774,6 +774,9 @@ class RAGService:
                 elif any(c.site_name and c.site_name.lower() in dc[0].lower() for dc in doc_cites):
                     is_used = True
                     first_pos = min(first_pos, 500)
+                elif any(term in answer_lower for term in ["resume", "document", "cv", "candidate", "report", "uploaded"]):
+                    is_used = True
+                    first_pos = min(first_pos, 500)
 
             # Check distinctive site name (e.g., YouTube, Reddit, GitHub, Wikipedia)
             if not is_used and c.site_name and len(c.site_name) > 3:
