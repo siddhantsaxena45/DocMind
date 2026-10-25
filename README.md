@@ -6,6 +6,15 @@
 **Hybrid RAG (RRF $k=60$) • HyDE & Multi-Query Expansion • In-Memory Semantic Caching • Langfuse Distributed Tracing • Ragas Automated Evals • Layered AI Guardrails • 100% Free-Tier Architecture**
 
 <p align="center">
+  <a href="https://github.com/siddhantsaxena45/DocMind/actions/workflows/ci.yml">
+    <img src="https://github.com/siddhantsaxena45/DocMind/actions/workflows/ci.yml/badge.svg" alt="CI/CD Pipeline" />
+  </a>
+  <img src="https://img.shields.io/badge/Ragas_Faithfulness-87.1%25-brightgreen?style=flat&logo=ragas" alt="Faithfulness 87.1%" />
+  <img src="https://img.shields.io/badge/Answer_Relevance-90.5%25-blue?style=flat" alt="Relevance 90.5%" />
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT" />
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite_7-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E" alt="Vite 7" />
   <img src="https://img.shields.io/badge/Tailwind_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS v4" />
@@ -15,11 +24,10 @@
   <img src="https://img.shields.io/badge/Pinecone_Serverless-000000?style=for-the-badge&logo=pinecone&logoColor=white" alt="Pinecone" />
   <img src="https://img.shields.io/badge/Supabase_PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Docker_Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
-  <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white" alt="GitHub Actions" />
 </p>
 
 <p align="center">
-  <a href="https://doc-mind-eight.vercel.app" target="_blank"><strong>🚀 Live Demo</strong></a> •
+  <a href="https://doc-mind-eight.vercel.app" target="_blank"><strong>🚀 Live Demo on Vercel</strong></a> •
   <a href="#-automated-rag-evaluation-scorecard-ragas-methodology"><strong>📊 AI Evals</strong></a> •
   <a href="#-system-architecture--pipeline-flow"><strong>🏗️ Architecture</strong></a> •
   <a href="#-core-enterprise-capabilities"><strong>🌟 Features</strong></a> •
@@ -28,7 +36,7 @@
 </p>
 
 <p align="center">
-  <strong>DocMind AI</strong> is an enterprise-grade document intelligence and real-time research engine modeled after <strong>Google AI Overviews</strong> and <strong>Perplexity AI</strong>. Built from the ground up to solve the real-world shortcomings of naive tutorial RAG systems, it integrates <strong>Hybrid Vector & Lexical Reciprocal Rank Fusion</strong>, <strong>HyDE & Multi-Query Expansion</strong>, <strong>In-Memory LRU Semantic Caching</strong>, <strong>Distributed OpenTelemetry Tracing via Langfuse</strong>, <strong>SSRF Pre-Resolution Security</strong>, and <strong>Automated Ragas Triad Evaluation Benchmarking</strong>.
+  <strong>DocMind AI</strong> is an enterprise-grade document intelligence and real-time research engine modeled after <strong>Google AI Overviews</strong> and <strong>Perplexity AI</strong>. Built to solve the real-world shortcomings of naive tutorial RAG systems, it integrates <strong>Hybrid Vector & Lexical Reciprocal Rank Fusion</strong>, <strong>HyDE & Multi-Query Expansion</strong>, <strong>In-Memory LRU Semantic Caching</strong>, <strong>Distributed OpenTelemetry Tracing via Langfuse</strong>, <strong>SSRF Pre-Resolution Security</strong>, and <strong>Automated Ragas Triad Evaluation Benchmarking</strong>.
 </p>
 
 </div>
@@ -37,7 +45,7 @@
 
 ## 📊 Automated RAG Evaluation Scorecard (Ragas Methodology)
 
-DocMind includes a fully automated evaluation benchmark suite ([`backend/tests/evals_ragas.py`](backend/tests/evals_ragas.py)) running against synthetic multi-domain technical, scientific, and document engineering test cases. Every commit and pull request is gated against these quantitative thresholds in CI/CD:
+DocMind includes an automated evaluation benchmark suite ([`backend/tests/evals_ragas.py`](backend/tests/evals_ragas.py)) running against synthetic multi-domain technical, scientific, and document engineering test cases. Every commit and pull request is gated against these quantitative thresholds in CI/CD:
 
 | Evaluation Metric | Target Benchmark | Measured DocMind Score | Status | Description |
 | :--- | :--- | :--- | :--- | :--- |
@@ -45,20 +53,29 @@ DocMind includes a fully automated evaluation benchmark suite ([`backend/tests/e
 | **Answer Relevance** | $\ge 0.85$ | **0.905** (90.5%) | 🟢 **PASSED** | Measures how directly and concisely the synthesized answer addresses the user prompt. |
 | **Context Precision** | $\ge 0.60$ | **0.648** (64.8%) | 🟢 **PASSED** | Quantifies whether top-ranked retrieved context chunks contain essential ground truth entities. |
 
-> **Observability Integration:** Benchmark metrics and session quality scores are automatically logged to **Langfuse Cloud** and published directly to GitHub Actions Step Summaries on every Pull Request.
+### Domain Benchmark Breakdown
+```markdown
+- [eval_01] Physics / Quantum:        Faithfulness=86.7% | Relevance=86.7% | Precision=88.9%
+- [eval_02] Information Retrieval:    Faithfulness=93.8% | Relevance=91.4% | Precision=50.0%
+- [eval_03] RAG Architecture:        Faithfulness=80.0% | Relevance=91.4% | Precision=46.7%
+- [eval_04] Document Engineering:    Faithfulness=100.0%| Relevance=89.1% | Precision=100.0%
+- [eval_05] Security:                Faithfulness=75.0% | Relevance=94.0% | Precision=38.5%
+```
+
+> **CI/CD Quality Gate:** Evaluation benchmarks are automatically executed via GitHub Actions and published directly to **GitHub Job Summaries** and **Langfuse Cloud** on every Pull Request.
 
 ---
 
 ## ✨ Key Architectural Highlights
 
-* **Hybrid RAG with Reciprocal Rank Fusion (RRF $k=60$):** Eliminates score calibration skew by fusing dense vector semantics (`text-embedding-004` with Matryoshka dimension truncation in Pinecone) and sparse BM25 keyword matching in Supabase PostgreSQL.
-* **HyDE & Multi-Query Expansion:** Synthesizes hypothetical document embeddings and lexical reformulations to bridge the vocabulary mismatch between informal user questions and dense technical document phrasing.
-* **In-Memory Semantic LRU Caching:** Hashes normalized queries and context fingerprints into an in-memory LRU cache with 1-hour TTL, serving repeat queries in **< 15ms** and cutting free-tier Gemini token usage by ~40%.
-* **Full Langfuse Distributed Observability:** Fine-grained observation hierarchy (`as_type="retriever"` for vector search, `as_type="tool"` for scrapers, `CallbackHandler` for LLM generations) tracking token usage, latency breakdowns (TTFT), and cost per query.
+* **Hybrid RAG with Reciprocal Rank Fusion (RRF $k=60$):** Fuses dense vector semantics (`text-embedding-004` with Matryoshka dimension truncation in Pinecone) and sparse BM25 keyword matching in Supabase PostgreSQL, eliminating score calibration skew.
+* **HyDE & Multi-Query Expansion:** Synthesizes hypothetical document embeddings and lexical reformulations to bridge vocabulary mismatch between user phrasing and dense technical document syntax.
+* **In-Memory Semantic LRU Caching:** Hashes normalized queries and context fingerprints into an in-memory LRU cache (`max_size=256`, 1-hour TTL), serving repeat queries in **< 15ms** and cutting free-tier Gemini token usage by ~40%.
+* **Full Langfuse Distributed Observability:** Complete observation hierarchy (`as_type="retriever"` for vector search, `as_type="tool"` for scrapers, `CallbackHandler` for LLM generations) tracking token counts, latency breakdowns (TTFT), and cost per query.
 * **Defense-in-Depth AI Guardrails:** Pre-inference regex and heuristic prompt injection detection, SSRF pre-resolution DNS blocking (blocking loopback, private RFC1918 subnets, and AWS/GCP cloud metadata `169.254.169.254`), and strict tenant database isolation.
-* **Multi-Engine Fast Web Cascade:** Bypasses cloud datacenter IP blocks on Render/AWS by cascading across `ddgs` (with Mojeek exclusions), direct **Bing HTML search**, **Google News RSS**, and **DuckDuckGo Lite**.
+* **Multi-Engine Fast Web Cascade:** Bypasses cloud datacenter IP blocks on Render/AWS by cascading across `ddgs` (excluding Mojeek), direct **Bing HTML search**, **Google News RSS**, and **DuckDuckGo Lite**.
 * **Universal Multi-Format Ingestion:** Traverses underlying PDF `/Annots` `/URI` dictionaries, DOCX relationship XML (`document.xml.rels`), PPTX slide relations, and XLSX cell links, preserving active URLs and structure across all documents.
-* **100% Free-Tier Resilient:** Operates indefinitely on zero recurring budget using an automated multi-key rotation pool across 9 Google Gemini keys with automatic 429 self-healing, Pinecone Serverless, Supabase free Postgres, and Langfuse Cloud.
+* **100% Free-Tier Resilient:** Seamlessly rotates through an automated pool of 9 Google Gemini keys with automatic 429 self-healing, Pinecone Serverless, Supabase free Postgres, and Langfuse Cloud.
 
 ---
 
@@ -138,7 +155,7 @@ DocMind synthesizes findings into an authoritative, executive-grade format:
 * Synthesizes hypothetical candidate document passages using the fast auxiliary Gemini model, embedding them and fusing results into RRF.
 
 ### 4. Distributed Tracing & Observability (Langfuse)
-* Integrated following official Langfuse AI skill standards:
+* Integrated following official Langfuse AI standards:
   * `@telemetry.observe(as_type="retriever")` on similarity search and hybrid RRF context assembly.
   * `@telemetry.observe(as_type="tool")` on web scrapers and external data fetching.
   * `CallbackHandler` attached to LangChain LLM invocations capturing token counts, latency, and TTFT.
@@ -280,7 +297,7 @@ Run the comprehensive unit test, security regression, and caching suite:
 ```bash
 cd backend
 
-# 1. Run all core regression & unit tests
+# 1. Run all core regression, security & semantic cache tests
 pytest tests/test_full_rag_pipeline.py tests/test_rag_chatbot.py tests/test_semantic_cache.py -v
 
 # 2. Run the quantitative Ragas evaluation suite
