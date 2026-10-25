@@ -32,16 +32,16 @@ jobs:
         working-directory: ./backend
         run: |
           # Stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Exit-zero treats all errors as warnings
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          flake8 . --count --select=E9,F63,F7,F82 --exclude=venv,.venv --show-source --statistics
+          # Exit-zero treats all warnings as non-fatal
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --exclude=venv,.venv --statistics
 
-      - name: Run Unit & Guardrail Tests
+      - name: Run Unit, Semantic Cache & Guardrail Tests
         working-directory: ./backend
         env:
           JWT_SECRET: "ci-test-jwt-secret-key-2026"
         run: |
-          python -m pytest tests/test_rag_chatbot.py -k "test_health_check or test_auth_workflow" -v
+          python -m pytest tests/test_rag_chatbot.py tests/test_semantic_cache.py tests/test_full_rag_pipeline.py -v
 
   frontend-build:
     name: Frontend Build & Type Validation

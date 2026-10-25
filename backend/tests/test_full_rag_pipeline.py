@@ -28,6 +28,19 @@ def test_web_search_service():
         assert "title" in results[0]
         assert results[0]["type"] == "web"
 
+def is_db_available() -> bool:
+    try:
+        from app.core.database import get_db_conn
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT 1;")
+        cur.close()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+@pytest.mark.skipif(not is_db_available(), reason="Database connection not available in CI environment")
 def test_end_to_end_rag_and_sharing_workflow():
     uid1 = uuid.uuid4().hex[:8]
     username1 = f"user_{uid1}"

@@ -6,12 +6,25 @@ from app.core.config import settings
 
 client = TestClient(app)
 
+def is_db_available() -> bool:
+    try:
+        from app.core.database import get_db_conn
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT 1;")
+        cur.close()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
 
+@pytest.mark.skipif(not is_db_available(), reason="Database connection not available in CI environment")
 def test_auth_workflow():
     unique_suffix = pytest.importorskip("uuid").uuid4().hex[:8]
     username = f"testuser_{unique_suffix}"
@@ -48,6 +61,7 @@ def test_auth_workflow():
     unauth_res = client.get("/api/auth/me")
     assert unauth_res.status_code == 401
 
+@pytest.mark.skipif(not is_db_available(), reason="Database connection not available in CI environment")
 def test_document_and_conversation_isolation():
     uuid = pytest.importorskip("uuid")
     user1 = f"user1_{uuid.uuid4().hex[:6]}"
