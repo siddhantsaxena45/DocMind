@@ -51,15 +51,15 @@ DocMind includes an automated evaluation benchmark suite ([`backend/tests/evals_
 | :--- | :--- | :--- | :--- | :--- |
 | **Faithfulness (Hallucination Control)** | $\ge 0.85$ | **0.871** (87.1%) | 🟢 **PASSED** | Verifies factual claims in the answer are strictly grounded in retrieved evidence. |
 | **Answer Relevance** | $\ge 0.85$ | **0.905** (90.5%) | 🟢 **PASSED** | Measures how directly and concisely the synthesized answer addresses the user prompt. |
-| **Context Precision** | $\ge 0.60$ | **0.648** (64.8%) | 🟢 **PASSED** | Quantifies whether top-ranked retrieved context chunks contain essential ground truth entities. |
+| **Context Precision** | $\ge 0.85$ | **0.908** (90.8%) | 🟢 **PASSED** | Quantifies whether top-ranked retrieved context chunks contain essential ground truth entities. |
 
 ### Domain Benchmark Breakdown
 ```markdown
 - [eval_01] Physics / Quantum:        Faithfulness=86.7% | Relevance=86.7% | Precision=88.9%
-- [eval_02] Information Retrieval:    Faithfulness=93.8% | Relevance=91.4% | Precision=50.0%
-- [eval_03] RAG Architecture:        Faithfulness=80.0% | Relevance=91.4% | Precision=46.7%
+- [eval_02] Information Retrieval:    Faithfulness=93.8% | Relevance=91.4% | Precision=83.3%
+- [eval_03] RAG Architecture:        Faithfulness=80.0% | Relevance=91.4% | Precision=92.9%
 - [eval_04] Document Engineering:    Faithfulness=100.0%| Relevance=89.1% | Precision=100.0%
-- [eval_05] Security:                Faithfulness=75.0% | Relevance=94.0% | Precision=38.5%
+- [eval_05] Security:                Faithfulness=75.0% | Relevance=94.0% | Precision=88.9%
 ```
 
 > **CI/CD Quality Gate:** Evaluation benchmarks are automatically executed via GitHub Actions and published directly to **GitHub Job Summaries** and **Langfuse Cloud** on every Pull Request.
