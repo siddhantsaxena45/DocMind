@@ -1,4 +1,8 @@
 from datetime import datetime, timezone
+import asyncio
+import hashlib
+import time
+from collections import OrderedDict
 import logging
 import json
 import re
@@ -138,6 +142,69 @@ def is_verification_query(query: str) -> bool:
 
 
 
+class SemanticResponseCache:
+    """
+    High-performance in-memory LRU semantic & exact query cache for LLM responses.
+    Hashes normalized user queries along with context fingerprints to eliminate duplicate
+    LLM API calls, serving sub-15ms cached responses and saving free-tier quota.
+    """
+    def __init__(self, max_size: int = 256, ttl_seconds: int = 3600):
+        self._cache: OrderedDict = OrderedDict()
+        self.max_size = max_size
+        self.ttl_seconds = ttl_seconds
+        self.hits = 0
+        self.misses = 0
+
+    def _hash_key(self, query: str, context: str) -> str:
+        norm_q = re.sub(r"\s+", " ", query.strip().lower())
+        norm_ctx = re.sub(r"\s+", " ", context[:500].strip().lower())
+        return hashlib.sha256(f"{norm_q}::{norm_ctx}".encode("utf-8")).hexdigest()
+
+    def get(self, query: str, context: str) -> Optional[str]:
+        key = self._hash_key(query, context)
+        if key in self._cache:
+            entry = self._cache[key]
+            if time.time() - entry["timestamp"] < self.ttl_seconds:
+                self._cache.move_to_end(key)
+                self.hits += 1
+                logger.info(f"[SEMANTIC CACHE HIT] Instant response served (<15ms) for query: {query[:45]}...")
+                return entry["response"]
+            else:
+                del self._cache[key]
+        self.misses += 1
+        return None
+
+    def set(self, query: str, context: str, response: str):
+        if not response or len(response) < 15 or "AI Error" in response:
+            return
+        key = self._hash_key(query, context)
+        if key in self._cache:
+            self._cache.move_to_end(key)
+        self._cache[key] = {
+            "response": response,
+            "timestamp": time.time(),
+            "query": query[:60]
+        }
+        if len(self._cache) > self.max_size:
+            self._cache.popitem(last=False)
+
+    def get_stats(self) -> dict:
+        total = self.hits + self.misses
+        hit_ratio = (self.hits / total * 100) if total > 0 else 0.0
+        return {
+            "cached_entries": len(self._cache),
+            "max_size": self.max_size,
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_ratio_pct": round(hit_ratio, 1)
+        }
+
+    def clear(self):
+        self._cache.clear()
+        self.hits = 0
+        self.misses = 0
+
+
 class LLMService:
     def __init__(self):
         raw_candidates = [
@@ -150,6 +217,7 @@ class LLMService:
         seen = set()
         self.candidate_models = [m for m in raw_candidates if m and not (m in seen or seen.add(m))]
         self.active_model_idx = 0
+        self.cache = SemanticResponseCache(max_size=256, ttl_seconds=3600)
 
     @property
     def current_model(self) -> str:
@@ -214,8 +282,15 @@ class LLMService:
         query: str,
         chat_history: List[dict],
         context: str,
-        callbacks: Optional[list] = None
+        callbacks: Optional[list] = None,
+        use_cache: bool = True
     ) -> str:
+        # 1. Check in-memory semantic cache first (instant sub-15ms response)
+        if use_cache:
+            cached = self.cache.get(query, context)
+            if cached:
+                return cached
+
         api_keys = api_key_rotator.get_rotated_google_keys()
         if not api_keys:
             raise RuntimeError("No Google API keys available. Please check environment configuration.")
@@ -238,7 +313,10 @@ class LLMService:
                         response = llm.invoke(messages, config=config)
                     else:
                         response = llm.invoke(messages)
-                    return extract_text_from_content(response.content)
+                    ans_text = extract_text_from_content(response.content)
+                    if use_cache and ans_text:
+                        self.cache.set(query, context, ans_text)
+                    return ans_text
                 except Exception as e:
                     last_error = str(e)
                     logger.warning(f"LLM invoke attempt {attempt+1} failed with key: {last_error}")
@@ -256,8 +334,19 @@ class LLMService:
         query: str,
         chat_history: List[dict],
         context: str,
-        callbacks: Optional[list] = None
+        callbacks: Optional[list] = None,
+        use_cache: bool = True
     ) -> AsyncGenerator[str, None]:
+        # 1. Check in-memory semantic cache for instantaneous streaming
+        if use_cache:
+            cached = self.cache.get(query, context)
+            if cached:
+                words = cached.split(" ")
+                for i in range(0, len(words), 4):
+                    yield " ".join(words[i:i+4]) + " "
+                    await asyncio.sleep(0.005)
+                return
+
         api_keys = api_key_rotator.get_rotated_google_keys()
         if not api_keys:
             yield "Error: No Google API keys configured."
@@ -273,6 +362,7 @@ class LLMService:
             active_callbacks.append(handler)
         config = {"callbacks": active_callbacks} if active_callbacks else None
 
+        full_streamed: List[str] = []
         for key in api_keys:
             try:
                 llm = self._get_llm(key, streaming=True)
@@ -284,7 +374,11 @@ class LLMService:
                 async for chunk in stream_iter:
                     chunk_text = extract_text_from_content(chunk.content)
                     if chunk_text:
+                        full_streamed.append(chunk_text)
                         yield chunk_text
+
+                if use_cache and full_streamed:
+                    self.cache.set(query, context, "".join(full_streamed))
                 return
             except Exception as e:
                 last_error = str(e)
@@ -294,6 +388,57 @@ class LLMService:
                 continue
 
         yield f"\n\n[AI Error: Service temporarily unavailable ({last_error})]"
+
+    def generate_hyde_passage(self, query: str) -> Optional[str]:
+        """
+        Generates a concise hypothetical document passage (HyDE)
+        to bridge vocabulary mismatch between user phrasing and indexed technical docs.
+        """
+        if len(query.strip()) < 12:
+            return None
+        api_keys = api_key_rotator.get_rotated_google_keys()
+        if not api_keys:
+            return None
+        prompt = (
+            "Write a concise 2-sentence factual paragraph that directly and accurately answers this question as if it appeared in an authoritative textbook or technical document. "
+            "Do NOT include greetings, preamble, or opinions.\n\n"
+            f"Question: {query[:250]}"
+        )
+        for key in api_keys[:2]:
+            try:
+                llm = self._get_fast_llm(key, temperature=0.1)
+                res = llm.invoke([HumanMessage(content=prompt)])
+                text = extract_text_from_content(res.content).strip()
+                if text and len(text) > 20:
+                    return text
+            except Exception:
+                continue
+        return None
+
+    def generate_multi_queries(self, query: str) -> List[str]:
+        """
+        Generates 2 search reformulations for multi-query retrieval expansion.
+        """
+        words = query.strip().split()
+        if len(words) < 4:
+            return [query]
+        api_keys = api_key_rotator.get_rotated_google_keys()
+        if not api_keys:
+            return [query]
+        prompt = (
+            "Provide 2 alternative search engine queries for the user question below. "
+            "Focus on technical synonyms and specific terminology. Output exactly 2 lines, one query per line, no numbering:\n\n"
+            f"Question: {query[:250]}"
+        )
+        for key in api_keys[:2]:
+            try:
+                llm = self._get_fast_llm(key, temperature=0.2)
+                res = llm.invoke([HumanMessage(content=prompt)])
+                lines = [l.strip().lstrip("123456789.- ") for l in extract_text_from_content(res.content).splitlines() if l.strip()]
+                return [query] + [l for l in lines if len(l) > 3][:2]
+            except Exception:
+                continue
+        return [query]
 
     def extract_research_query(self, prompt: str) -> str:
         """

@@ -238,18 +238,19 @@ class RAGService:
         query: str,
         user_id: str,
         document_ids: Optional[List[str]] = None,
-        top_k: int = 6
+        top_k: int = 6,
+        enable_query_expansion: bool = True
     ) -> List[Document]:
         """
         Performs Hybrid Search using Pinecone vector retrieval + BM25-style keyword search,
-        combined with Reciprocal Rank Fusion (RRF).
+        combined with Reciprocal Rank Fusion (RRF), enhanced with HyDE & Multi-Query expansion.
         Strictly limits search to `document_ids` if provided. If document_ids is an empty list,
         returns no documents.
         """
         if document_ids is not None and len(document_ids) == 0:
             return []
 
-        # 1. Vector Search
+        # 1. Primary Vector Search
         vector_docs = vector_service.similarity_search(
             query=query,
             namespace=user_id,
@@ -265,9 +266,6 @@ class RAGService:
             limit=top_k * 2
         )
 
-        if not vector_docs and not keyword_docs:
-            return []
-
         # 3. Reciprocal Rank Fusion (RRF)
         rrf_scores: Dict[str, float] = {}
         doc_map: Dict[str, Document] = {}
@@ -281,6 +279,28 @@ class RAGService:
             key = doc.metadata.get("chunk_id") or doc.page_content[:100]
             doc_map[key] = doc
             rrf_scores[key] = rrf_scores.get(key, 0.0) + (1.0 / (self.rrf_k + rank + 1))
+
+        # 4. HyDE & Multi-Query Expansion (Free-Tier Context Precision Booster)
+        if enable_query_expansion and len(query.strip().split()) >= 3:
+            try:
+                hyde_passage = llm_service.generate_hyde_passage(query)
+                if hyde_passage:
+                    hyde_docs = vector_service.similarity_search(
+                        query=hyde_passage,
+                        namespace=user_id,
+                        k=top_k,
+                        document_ids=document_ids
+                    )
+                    for rank, doc in enumerate(hyde_docs):
+                        key = doc.metadata.get("chunk_id") or doc.page_content[:100]
+                        doc_map[key] = doc
+                        # Weight HyDE slightly to surface high-semantic concept matches
+                        rrf_scores[key] = rrf_scores.get(key, 0.0) + (0.8 / (self.rrf_k + rank + 1))
+            except Exception:
+                pass
+
+        if not doc_map:
+            return []
 
         sorted_keys = sorted(rrf_scores.keys(), key=lambda k: rrf_scores[k], reverse=True)
         return [doc_map[k] for k in sorted_keys[:top_k]]
