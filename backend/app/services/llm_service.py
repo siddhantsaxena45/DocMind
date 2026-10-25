@@ -7,6 +7,7 @@ from typing import List, AsyncGenerator, Optional, Tuple, Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from app.core.config import settings, api_key_rotator
+from app.core.telemetry import telemetry
 
 warnings.filterwarnings("ignore", category=UserWarning, message=".*uses fixed sampling defaults.*")
 
@@ -207,7 +208,14 @@ class LLMService:
         messages.append(HumanMessage(content=user_prompt_with_context))
         return messages
 
-    def generate_rag_response(self, query: str, chat_history: List[dict], context: str) -> str:
+    @telemetry.observe(name="generate_rag_response")
+    def generate_rag_response(
+        self,
+        query: str,
+        chat_history: List[dict],
+        context: str,
+        callbacks: Optional[list] = None
+    ) -> str:
         api_keys = api_key_rotator.get_rotated_google_keys()
         if not api_keys:
             raise RuntimeError("No Google API keys available. Please check environment configuration.")
@@ -215,11 +223,21 @@ class LLMService:
         messages = self._prepare_messages(query, chat_history, context)
         last_error = ""
 
+        # Prepare Langfuse callback handler
+        handler = telemetry.get_langfuse_handler()
+        active_callbacks = list(callbacks or [])
+        if handler:
+            active_callbacks.append(handler)
+        config = {"callbacks": active_callbacks} if active_callbacks else None
+
         for key in api_keys:
             for attempt in range(2):
                 try:
                     llm = self._get_llm(key, streaming=False)
-                    response = llm.invoke(messages)
+                    if config:
+                        response = llm.invoke(messages, config=config)
+                    else:
+                        response = llm.invoke(messages)
                     return extract_text_from_content(response.content)
                 except Exception as e:
                     last_error = str(e)
@@ -237,7 +255,8 @@ class LLMService:
         self,
         query: str,
         chat_history: List[dict],
-        context: str
+        context: str,
+        callbacks: Optional[list] = None
     ) -> AsyncGenerator[str, None]:
         api_keys = api_key_rotator.get_rotated_google_keys()
         if not api_keys:
@@ -247,10 +266,22 @@ class LLMService:
         messages = self._prepare_messages(query, chat_history, context)
         last_error = ""
 
+        # Prepare Langfuse callback handler
+        handler = telemetry.get_langfuse_handler()
+        active_callbacks = list(callbacks or [])
+        if handler:
+            active_callbacks.append(handler)
+        config = {"callbacks": active_callbacks} if active_callbacks else None
+
         for key in api_keys:
             try:
                 llm = self._get_llm(key, streaming=True)
-                async for chunk in llm.astream(messages):
+                if config:
+                    stream_iter = llm.astream(messages, config=config)
+                else:
+                    stream_iter = llm.astream(messages)
+
+                async for chunk in stream_iter:
                     chunk_text = extract_text_from_content(chunk.content)
                     if chunk_text:
                         yield chunk_text

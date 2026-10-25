@@ -374,7 +374,7 @@ export default function Sidebar({
         </div>
 
         {/* Bottom User Profile & Logout */}
-        <div className="p-3 border-t border-amber-500/15 shrink-0 flex items-center justify-between bg-black/90">
+        <div className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] border-t border-amber-500/15 shrink-0 flex items-center justify-between bg-black/90">
           <div className="flex items-center gap-2.5 truncate">
             <div className="w-8 h-8 rounded-full bg-linear-to-br from-amber-400 via-yellow-500 to-amber-700 flex items-center justify-center text-slate-950 text-xs font-bold uppercase shrink-0 shadow-md shadow-amber-500/20">
               {user?.username ? user.username[0] : "U"}

@@ -7,6 +7,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from app.core.config import settings, api_key_rotator
+from app.core.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,7 @@ class VectorService:
             store.add_documents(batch)
         return len(docs)
 
+    @telemetry.observe(as_type="retriever", name="vector_similarity_search")
     def similarity_search(
         self,
         query: str,

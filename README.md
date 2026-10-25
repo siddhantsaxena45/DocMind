@@ -243,6 +243,32 @@ To eliminate hallucinated or misleading source cards:
 
 ---
 
+## 🔍 Distributed Tracing & Observability (Langfuse)
+
+DocMind incorporates enterprise-grade AI observability powered by **[Langfuse](https://langfuse.com)** (100% Free Cloud Tier: 50,000 traces/mo free):
+
+- **Observations-First Data Model**: Built on Langfuse v4/v5 specifications, propagating `session_id` (conversation), `user_id`, tags (`["rag-chat", "docmind"]`), and request metadata across all nested spans.
+- **Explicit Observation Typing**:
+  - `retriever`: Vector similarity search (`vector_similarity_search`) and Reciprocal Rank Fusion (`hybrid_retrieval`, `assemble_rag_context`).
+  - `tool`: Multi-engine web search queries (`web_search_multi`) and parallel web content scrapers (`fetch_multiple_urls`).
+  - `generation`: Captured automatically via `langfuse.langchain.CallbackHandler`, recording exact model names, prompt & completion token counts, latency breakdowns (TTFT), and estimated USD cost.
+- **Automated Quality & Guardrail Scores**:
+  - `input_guardrails_passed` (1.0 = Clean, 0.0 = Prompt Injection / Leakage Blocked)
+  - `output_guardrails_passed` (1.0 = Grounded Citations & Sanitized Formatting)
+  - `benchmark_faithfulness` (Hallucination metric from Ragas evaluation suite)
+  - `benchmark_answer_relevance` & `benchmark_context_precision`
+- **Langfuse AI Agent Skill**: Installed in `.agents/skills/langfuse/SKILL.md` directly from [github.com/langfuse/skills](https://github.com/langfuse/skills), enabling agentic trace auditing, evaluation dataset creation, and prompt management.
+
+### Configuration (`.env`)
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://us.cloud.langfuse.com  # Or https://cloud.langfuse.com (EU)
+LANGFUSE_TRACING_ENVIRONMENT=development
+```
+
+---
+
 ## 💻 Technology Stack
 
 | Layer | Technology | Details |
@@ -261,6 +287,7 @@ To eliminate hallucinated or misleading source cards:
 | **Web Search Cascade** | **`ddgs`, Bing HTML, Google News RSS, DDG Lite** | Multi-engine search cascade eliminating cloud datacenter timeouts |
 | **Platform APIs** | **Kick, Twitch, GitHub, Reddit, YouTube, Wikipedia** | Real-time social profile, repository, and community data |
 | **Parallel Scraper** | **ThreadPoolExecutor + httpx + lxml** | Scrapes articles, headings, and data tables across distinct domains |
+| **AI Observability & Tracing** | **Langfuse (Free Cloud / Self-Hosted)** | Distributed tracing, token tracking, latency breakdown, guardrail scores, and Ragas evals |
 | **Favicon Engine** | **Unavatar CDN & SVG Fallback** | Dynamic high-res website favicons with deterministic SVG fallbacks for 100% 200 OK reliability |
 | **Auth & Security** | **JWT (python-jose) + Passlib** | Stateless token auth with PBKDF2 password hashing |
 

@@ -5,9 +5,13 @@ import urllib.parse
 import warnings
 from urllib.parse import urlparse
 from typing import List, Dict, Any, Optional
+import ipaddress
+import socket
 import httpx
 
 warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*duckduckgo_search.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*renamed to.*ddgs.*")
+warnings.filterwarnings("ignore", category=UserWarning, message=".*duckduckgo_search.*")
 
 try:
     from ddgs import DDGS
@@ -15,6 +19,7 @@ except ImportError:
     from duckduckgo_search import DDGS
 
 logger = logging.getLogger(__name__)
+from app.core.telemetry import telemetry
 
 SPAM_MARKETPLACE_DOMAINS = {
     "aliexpress.com", "aliexpress.us", "temu.com", "alibaba.com",
@@ -300,6 +305,7 @@ class WebSearchService:
 
         return results
 
+    @telemetry.observe(as_type="tool", name="web_search_multi")
     def search_multi(self, queries: List[str], max_results: int = 8) -> List[Dict[str, Any]]:
         """
         Executes web searches across multiple targeted queries and merges results,
@@ -847,14 +853,59 @@ class WebSearchService:
 
         return results
 
+    @staticmethod
+    def is_safe_public_url(url: str) -> bool:
+        """
+        Guards against Server-Side Request Forgery (SSRF).
+        Rejects loopback (127.0.0.1), private RFC1918 ranges (10.x, 172.16.x, 192.168.x),
+        link-local cloud metadata endpoints (169.254.169.254), and local hostnames.
+        """
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return False
+            hostname = parsed.hostname
+            if not hostname:
+                return False
+            hostname = hostname.lower()
+            if hostname in ("localhost", "127.0.0.1", "0.0.0.0", "::1", "metadata.google.internal") or hostname.endswith((".local", ".internal", ".localhost")):
+                return False
+
+            try:
+                addr_info = socket.getaddrinfo(hostname, None)
+            except Exception:
+                return False
+
+            for family, _, _, _, sockaddr in addr_info:
+                ip_str = sockaddr[0]
+                ip_obj = ipaddress.ip_address(ip_str)
+                if (
+                    ip_obj.is_private or
+                    ip_obj.is_loopback or
+                    ip_obj.is_link_local or
+                    ip_obj.is_multicast or
+                    ip_obj.is_reserved or
+                    ip_obj.is_unspecified
+                ):
+                    return False
+            return True
+        except Exception:
+            return False
+
     def fetch_url_content(self, url: str) -> Optional[Dict[str, Any]]:
         """
         Directly visits and scrapes live web pages (Wikipedia, news articles, tech documentation,
         blogs, GitHub repos, YouTube channels, official sites) to extract in-depth readable content.
+        Protected against SSRF and internal network scanning.
         """
         clean_u = url.strip()
         if not clean_u.startswith("http://") and not clean_u.startswith("https://"):
             clean_u = "https://" + clean_u
+
+        # SSRF Protection
+        if not self.is_safe_public_url(clean_u):
+            logger.warning(f"Blocked unsafe SSRF request attempt to: {clean_u}")
+            return None
 
         site_name, favicon = extract_site_metadata(clean_u)
 
@@ -1001,6 +1052,7 @@ class WebSearchService:
             logger.debug(f"Live web scrape for {clean_u} failed: {e}")
             return None
 
+    @telemetry.observe(as_type="tool", name="fetch_multiple_urls")
     def fetch_multiple_urls(self, urls: List[str], max_urls: int = 5) -> List[Dict[str, Any]]:
         """
         Fetches live web content from multiple target URLs in PARALLEL.

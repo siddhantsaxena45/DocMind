@@ -9,6 +9,7 @@ from app.services.llm_service import llm_service, is_verification_query
 from app.services.document_service import extract_urls_from_text
 from app.core.database import get_db_conn
 from app.api.models import Citation
+from app.core.telemetry import telemetry
 
 KNOWN_PLATFORMS = {
     "kick.com": "Kick",
@@ -231,6 +232,7 @@ class RAGService:
         scored_chunks.sort(key=lambda x: x[0], reverse=True)
         return [item[1] for item in scored_chunks[:limit]]
 
+    @telemetry.observe(as_type="retriever", name="hybrid_retrieval")
     def hybrid_retrieve(
         self,
         query: str,
@@ -283,6 +285,7 @@ class RAGService:
         sorted_keys = sorted(rrf_scores.keys(), key=lambda k: rrf_scores[k], reverse=True)
         return [doc_map[k] for k in sorted_keys[:top_k]]
 
+    @telemetry.observe(as_type="retriever", name="assemble_rag_context")
     def assemble_rag_context(
         self,
         query: str,

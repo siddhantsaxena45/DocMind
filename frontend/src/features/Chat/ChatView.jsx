@@ -62,8 +62,10 @@ export default function ChatView({
   const [activeSourcesModal, setActiveSourcesModal] = useState(null);
   const [editingMsgIdx, setEditingMsgIdx] = useState(null);
   const [editContent, setEditContent] = useState("");
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const abortControllerRef = useRef(null);
 
@@ -82,6 +84,14 @@ export default function ChatView({
     const q = docSearchQuery.toLowerCase();
     return list.filter((d) => d.filename.toLowerCase().includes(q));
   }, [documents, selectedDocIds, docSearchQuery]);
+
+  // Track scroll position to show/hide the floating scroll-to-bottom button
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const distFromBottom = scrollHeight - scrollTop - clientHeight;
+    setShowScrollBottom(distFromBottom > 160);
+  };
 
   // Auto-scroll to bottom
   const scrollToBottom = (behavior = "smooth") => {
@@ -437,84 +447,94 @@ export default function ChatView({
   return (
     <div className="flex-1 flex flex-col h-full bg-[#050507] relative overflow-hidden">
       {/* Top Header Bar */}
-      <header className="h-14 md:h-16 border-b border-amber-500/15 flex items-center justify-between px-3 md:px-6 bg-black/60 backdrop-blur-md shrink-0 z-20">
-        <div className="flex items-center gap-2 md:gap-3 truncate">
+      <header className="h-14 md:h-16 border-b border-amber-500/15 flex items-center justify-between px-2.5 sm:px-4 md:px-6 bg-black/60 backdrop-blur-md shrink-0 z-20">
+        <div className="flex items-center gap-2 md:gap-3 truncate min-w-0 flex-1 mr-2">
           <button
             onClick={onSidebarToggle}
-            className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5"
+            className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 shrink-0"
+            aria-label="Open sidebar"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="truncate">
-            <h2 className="text-sm md:text-base font-bold text-white tracking-tight truncate">
+          <div className="truncate min-w-0">
+            <h2 className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight truncate">
               {conversation?.title || "New Chat"}
             </h2>
-            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium">
-              <span className={attachedDocs.length > 0 ? "text-amber-400 font-semibold" : "text-slate-500"}>
+            <div className="flex items-center gap-1.5 md:gap-2 text-[10px] text-slate-500 font-medium truncate">
+              <span className={`truncate ${attachedDocs.length > 0 ? "text-amber-400 font-semibold" : "text-slate-500"}`}>
                 {attachedDocs.length > 0
-                  ? `${attachedDocs.length} ${attachedDocs.length === 1 ? "file" : "files"} in this chat's knowledge base`
-                  : "No documents attached"}
+                  ? `${attachedDocs.length} ${attachedDocs.length === 1 ? "doc" : "docs"}`
+                  : "No docs"}
               </span>
               <span>•</span>
               <span className={conversation?.web_search_enabled ? "text-amber-400 font-semibold" : "text-slate-500"}>
-                Web Search {conversation?.web_search_enabled ? "ON" : "OFF"}
+                Web {conversation?.web_search_enabled ? "ON" : "OFF"}
               </span>
             </div>
           </div>
         </div>
 
         {/* Header Controls */}
-        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-3 shrink-0">
           {/* Chat Knowledge Base Button */}
           <button
             onClick={() => setShowKnowledgeModal(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+            className={`flex items-center gap-1 px-2 py-1.5 sm:px-2.5 sm:py-1.5 md:px-3 md:py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
               attachedDocs.length > 0
                 ? "bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25 shadow-xs shadow-amber-500/20"
                 : "bg-white/5 border-dashed border-white/20 text-slate-400 hover:text-white hover:border-amber-500/40"
             }`}
             title="Configure documents accessible by this chat"
+            aria-label="Manage chat documents"
           >
-            <Database className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">
+            <Database className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden md:inline">
               {attachedDocs.length > 0 ? `${attachedDocs.length} Docs in Chat` : "Attach Docs"}
             </span>
-            <span className="sm:hidden">
-              {attachedDocs.length > 0 ? `${attachedDocs.length} Docs` : "Attach"}
-            </span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
+            {attachedDocs.length > 0 && (
+              <span className="md:hidden font-mono text-[10px] bg-amber-400/20 text-amber-300 px-1 rounded-full font-bold">
+                {attachedDocs.length}
+              </span>
+            )}
+            <ChevronDown className="w-3 h-3 text-slate-400 hidden sm:inline" />
           </button>
 
           {/* Web Search Toggle Pill */}
           <button
             onClick={toggleWebSearch}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+            className={`flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1.5 md:px-3 md:py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${
               conversation?.web_search_enabled
                 ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-xs shadow-amber-500/20"
                 : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200"
             }`}
             title="Toggle live Web Search"
+            aria-label="Toggle live web search"
           >
             <Globe className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Web Search</span>
-            <span className={`w-1.5 h-1.5 rounded-full ${conversation?.web_search_enabled ? "bg-amber-400" : "bg-slate-600"}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${conversation?.web_search_enabled ? "bg-amber-400 ring-2 ring-amber-400/30" : "bg-slate-600"}`} />
           </button>
 
           {/* Share Button */}
           <button
             onClick={onOpenShareModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-amber-500/10 border border-white/10 hover:border-amber-500/30 text-slate-300 hover:text-white transition-all"
+            className="flex items-center gap-1.5 p-2 sm:px-2.5 sm:py-1.5 md:px-3 md:py-1.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-amber-500/10 border border-white/10 hover:border-amber-500/30 text-slate-300 hover:text-white transition-all active:scale-95"
             title="Share chat link"
+            aria-label="Share chat"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Share</span>
+            <span className="hidden md:inline">Share</span>
           </button>
         </div>
       </header>
 
       {/* Message List / Empty State */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 md:p-8 space-y-6 custom-scrollbar min-h-0">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-3.5 py-4 sm:px-6 sm:py-6 md:p-8 space-y-4 md:space-y-6 custom-scrollbar min-h-0"
+      >
         {error && (
           <div className="max-w-3xl mx-auto p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -604,16 +624,17 @@ export default function ChatView({
             </div>
 
             {/* Prompt Suggestion Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 w-full">
               {PROMPT_SUGGESTIONS.map((suggestion, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSend(suggestion)}
-                  className="text-left p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 text-xs text-slate-300 hover:text-white transition-all group"
+                  className="text-left p-3 md:p-3.5 rounded-2xl bg-[#0c0c0f]/90 hover:bg-white/10 active:bg-amber-500/10 border border-amber-500/15 hover:border-amber-500/40 active:border-amber-400/60 active:scale-[0.98] text-xs text-slate-300 hover:text-white transition-all group flex flex-col justify-between shadow-xs cursor-pointer"
                 >
-                  <p className="line-clamp-2 leading-relaxed">{suggestion}</p>
-                  <span className="text-[10px] text-brand-primary mt-2 inline-block opacity-0 group-hover:opacity-100 transition-opacity">
-                    Ask now →
+                  <p className="line-clamp-2 leading-relaxed font-medium">{suggestion}</p>
+                  <span className="text-[10px] text-amber-400/80 group-hover:text-amber-300 mt-2 flex items-center gap-1 font-semibold">
+                    <span>Try prompt</span>
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
                   </span>
                 </button>
               ))}
@@ -833,27 +854,46 @@ export default function ChatView({
         </div>
       </div>
 
-      {/* Floating Bottom Input Bar */}
-      <div className="p-3 md:p-6 bg-black/80 backdrop-blur-md border-t border-amber-500/15 shrink-0">
+      {/* Floating Scroll-to-Bottom FAB for Mobile & Desktop */}
+      <AnimatePresence>
+        {showScrollBottom && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            onClick={() => scrollToBottom("smooth")}
+            className="absolute bottom-28 right-4 md:right-8 z-30 p-2.5 rounded-full bg-linear-to-r from-amber-400 via-yellow-500 to-amber-600 text-slate-950 font-bold shadow-xl shadow-amber-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            title="Scroll to latest messages"
+            aria-label="Scroll to latest messages"
+          >
+            <ChevronDown className="w-4 h-4 stroke-[3]" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Bottom Input Bar with Mobile Viewport & Safe-Area Padding */}
+      <div className="p-2.5 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] bg-black/85 backdrop-blur-md border-t border-amber-500/15 shrink-0 z-20">
         <div className="max-w-3xl mx-auto relative">
           {/* Active Chat Knowledge Base Chips Bar */}
           {attachedDocs.length > 0 ? (
-            <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
-              <span className="text-[11px] font-semibold text-slate-400 shrink-0 flex items-center gap-1">
+            <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-1 text-xs custom-scrollbar">
+              <span className="text-[10px] md:text-[11px] font-semibold text-slate-400 shrink-0 flex items-center gap-1">
                 <Database className="w-3 h-3 text-amber-400" />
-                Chat Knowledge Base:
+                <span className="hidden sm:inline">Chat Knowledge Base:</span>
+                <span className="sm:hidden">Attached:</span>
               </span>
               {attachedDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black border border-amber-500/30 text-white text-[11px] shrink-0 shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg bg-black border border-amber-500/30 text-white text-[10px] md:text-[11px] shrink-0 shadow-xs"
                 >
                   <FileText className={`w-3 h-3 ${getFileIconColor(doc.filename)}`} />
-                  <span className="max-w-[150px] truncate">{doc.filename}</span>
+                  <span className="max-w-[110px] sm:max-w-[150px] truncate">{doc.filename}</span>
                   <button
                     onClick={() => onDetachDoc(doc.id)}
-                    className="text-slate-400 hover:text-red-400 transition-colors ml-0.5"
+                    className="text-slate-400 hover:text-red-400 transition-colors p-0.5"
                     title={`Detach ${doc.filename} from this chat`}
+                    aria-label={`Detach ${doc.filename}`}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -861,7 +901,7 @@ export default function ChatView({
               ))}
               <button
                 onClick={() => setShowKnowledgeModal(true)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-amber-500/10 border border-white/10 hover:border-amber-500/30 text-slate-300 hover:text-white text-[11px] shrink-0 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-0.5 md:py-1 rounded-lg bg-white/5 hover:bg-amber-500/10 border border-white/10 hover:border-amber-500/30 text-slate-300 hover:text-white text-[10px] md:text-[11px] shrink-0 transition-colors active:scale-95"
                 title="Add more documents to this chat"
               >
                 <Plus className="w-3 h-3 text-amber-400" />
@@ -869,16 +909,17 @@ export default function ChatView({
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between px-2 mb-2 text-[11px] text-slate-500">
+            <div className="flex items-center justify-between px-1.5 mb-1.5 text-[10px] md:text-[11px] text-slate-500">
               <div className="flex items-center gap-1.5">
                 <Database className="w-3 h-3 text-slate-600" />
-                <span>No documents attached to this chat.</span>
+                <span className="hidden sm:inline">No documents attached to this chat.</span>
+                <span className="sm:hidden">No documents</span>
               </div>
               <button
                 onClick={() => setShowKnowledgeModal(true)}
-                className="text-amber-400 hover:text-amber-300 hover:underline font-semibold flex items-center gap-1"
+                className="text-amber-400 hover:text-amber-300 hover:underline font-semibold flex items-center gap-1 active:scale-95"
               >
-                <Plus className="w-3 h-3" /> Attach / Upload to Chat
+                <Plus className="w-3 h-3" /> Attach / Upload
               </button>
             </div>
           )}
@@ -893,24 +934,25 @@ export default function ChatView({
               onKeyDown={handleKeyDown}
               placeholder={
                 attachedDocs.length > 0
-                  ? `Ask anything about ${attachedDocs.length === 1 ? attachedDocs[0].filename : `${attachedDocs.length} attached documents`}...`
-                  : "Ask anything, search the web, or attach documents to this chat..."
+                  ? `Ask about ${attachedDocs.length === 1 ? attachedDocs[0].filename : `${attachedDocs.length} attached documents`}...`
+                  : "Ask anything, search the web, or attach documents..."
               }
-              className="w-full bg-transparent pl-4 pr-24 py-3.5 text-xs md:text-sm text-white placeholder-slate-500 outline-none resize-none max-h-48 custom-scrollbar"
+              className="w-full bg-transparent pl-3.5 pr-26 md:pr-28 py-3 text-xs md:text-sm text-white placeholder-slate-500 outline-none resize-none max-h-40 md:max-h-48 custom-scrollbar leading-relaxed"
             />
 
             {/* Action buttons inside input */}
-            <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
+            <div className="absolute right-2 bottom-2 flex items-center gap-1 sm:gap-1.5">
               {/* Web Search icon button */}
               <button
                 type="button"
                 onClick={toggleWebSearch}
-                className={`p-2 rounded-xl transition-colors ${
+                className={`p-2 rounded-xl transition-all active:scale-90 ${
                   conversation?.web_search_enabled
-                    ? "text-amber-400 bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25"
-                    : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                    ? "text-amber-400 bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 shadow-xs"
+                    : "text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-transparent"
                 }`}
                 title={`Web Search is ${conversation?.web_search_enabled ? "ON" : "OFF"}`}
+                aria-label="Toggle web search"
               >
                 <Globe className="w-4 h-4" />
               </button>
@@ -919,8 +961,9 @@ export default function ChatView({
               <button
                 type="button"
                 onClick={() => setShowKnowledgeModal(true)}
-                className="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                className="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all active:scale-90"
                 title="Manage chat attached documents"
+                aria-label="Attach documents to this chat"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -930,8 +973,9 @@ export default function ChatView({
                 <button
                   type="button"
                   onClick={handleStopStream}
-                  className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md transition-all active:scale-95"
+                  className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md transition-all active:scale-90"
                   title="Stop generating"
+                  aria-label="Stop generating"
                 >
                   <div className="w-3.5 h-3.5 bg-white rounded-xs" />
                 </button>
@@ -940,17 +984,18 @@ export default function ChatView({
                   type="button"
                   onClick={() => handleSend()}
                   disabled={!input.trim()}
-                  className="p-2 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-600 hover:brightness-110 text-slate-950 font-bold rounded-xl shadow-md shadow-amber-500/30 disabled:opacity-30 disabled:hover:brightness-100 transition-all active:scale-95"
+                  className="p-2 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-600 hover:brightness-110 text-slate-950 font-bold rounded-xl shadow-md shadow-amber-500/30 disabled:opacity-30 disabled:hover:brightness-100 transition-all active:scale-90"
                   title="Send message"
+                  aria-label="Send message"
                 >
-                  <ArrowUp className="w-4 h-4" />
+                  <ArrowUp className="w-4 h-4 font-bold" />
                 </button>
               )}
             </div>
           </div>
 
-          <div className="mt-2 text-center text-[10px] text-slate-500">
-            DocMind AI strictly isolates retrieval to documents attached to this chat. Check critical information.
+          <div className="mt-1.5 md:mt-2 text-center text-[10px] text-slate-500">
+            DocMind AI strictly isolates retrieval to documents attached to this chat.
           </div>
         </div>
       </div>

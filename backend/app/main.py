@@ -27,15 +27,20 @@ app = FastAPI(
 
 # CORS configuration
 origins = [o.strip().rstrip("/") for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+cors_kwargs = {
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
 if "*" in origins or not origins:
-    origins = ["*"]
+    cors_kwargs["allow_origins"] = ["*"]
+    cors_kwargs["allow_credentials"] = False
+else:
+    cors_kwargs["allow_origins"] = origins
+    cors_kwargs["allow_credentials"] = True
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    **cors_kwargs
 )
 
 # Include core routers

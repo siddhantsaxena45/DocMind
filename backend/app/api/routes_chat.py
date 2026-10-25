@@ -13,8 +13,13 @@ from app.core.database import get_db_conn
 from app.core.auth import get_current_user, AuthUser
 from app.services.rag_service import rag_service
 from app.services.llm_service import llm_service
+from app.core.guardrails import guardrails
 import jwt
+import logging
 from app.core.config import settings
+from app.core.telemetry import telemetry
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/conversations", tags=["Conversations / Chat"])
 
@@ -244,124 +249,144 @@ def delete_conversation(
 
 
 @router.post("/{conversation_id}/messages", response_model=SendMessageResponse)
+@telemetry.observe(name="chat-message")
 def send_message(
     conversation_id: str,
     req: SendMessageRequest,
     current_user: AuthUser = Depends(get_current_user)
 ):
-    conn = get_db_conn()
-    cur = conn.cursor()
-    conv = _verify_conversation_owner(cur, conversation_id, current_user.user_id)
-
-    user_text = req.text.strip()
-    if not user_text:
-        cur.close()
-        conn.close()
-        raise HTTPException(status_code=400, detail="Message text cannot be empty")
-
-    # 1. Insert user message
-    cur.execute(
-        """
-        INSERT INTO messages (conversation_id, user_id, role, content)
-        VALUES (%s, %s, %s, %s)
-        """,
-        (conversation_id, current_user.user_id, "user", user_text)
-    )
-
-    # 2. Check auto-naming if title is 'New Chat'
-    if conv["title"] == "New Chat":
-        auto_title = llm_service.generate_title(user_text)
-        cur.execute(
-            "UPDATE conversations SET title = %s WHERE id = %s",
-            (auto_title, conversation_id)
-        )
-
-    # 3. Fetch past messages for context (most recent 12 turns in chronological order)
-    cur.execute(
-        """
-        SELECT role, content FROM (
-            SELECT role, content, created_at FROM messages
-            WHERE conversation_id = %s
-            ORDER BY created_at DESC
-            LIMIT 12
-        ) sub ORDER BY created_at ASC
-        """,
-        (conversation_id,)
-    )
-    history_rows = cur.fetchall()
-    chat_history = [{"role": r[0], "content": r[1]} for r in history_rows]
-    if chat_history and chat_history[-1].get("role") == "user" and chat_history[-1].get("content") == user_text:
-        chat_history = chat_history[:-1]
-
-    # 4. RAG Retrieval
-    doc_ids = req.selected_doc_ids if req.selected_doc_ids is not None else conv.get("selected_doc_ids", [])
-    web_enabled = req.web_search if req.web_search is not None else conv["web_search_enabled"]
-
-    context, citations, search_topic = rag_service.assemble_rag_context(
-        query=user_text,
+    with telemetry.propagate_attributes(
+        session_id=conversation_id,
         user_id=current_user.user_id,
-        document_ids=doc_ids,
-        enable_web_search=web_enabled,
-        chat_history=chat_history
-    )
+        tags=["rag-chat", "docmind"],
+        metadata={"client": "web"}
+    ):
+        conn = get_db_conn()
+        cur = conn.cursor()
+        conv = _verify_conversation_owner(cur, conversation_id, current_user.user_id)
 
-    # 5. Extract research query if web search or docs used
-    research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if web_enabled else None)
+        user_text = req.text.strip()
+        if not user_text:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail="Message text cannot be empty")
 
-    # 6. LLM Synthesis
-    try:
-        answer = llm_service.generate_rag_response(
-            query=user_text,
-            chat_history=chat_history,
-            context=context
+        is_valid, user_text, violation_reason = guardrails.validate_input(user_text)
+        telemetry.record_guardrails_score(passed=is_valid, name="input_guardrails_passed", session_id=conversation_id, reason=violation_reason)
+        if not is_valid:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=violation_reason or "Input blocked by security guardrails")
+
+        # 1. Insert user message
+        cur.execute(
+            """
+            INSERT INTO messages (conversation_id, user_id, role, content)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (conversation_id, current_user.user_id, "user", user_text)
         )
-    except Exception as e:
-        conn.rollback()
+
+        # 2. Check auto-naming if title is 'New Chat'
+        if conv["title"] == "New Chat":
+            auto_title = llm_service.generate_title(user_text)
+            cur.execute(
+                "UPDATE conversations SET title = %s WHERE id = %s",
+                (auto_title, conversation_id)
+            )
+
+        # 3. Fetch past messages for context (most recent 12 turns in chronological order)
+        cur.execute(
+            """
+            SELECT role, content FROM (
+                SELECT role, content, created_at FROM messages
+                WHERE conversation_id = %s
+                ORDER BY created_at DESC
+                LIMIT 12
+            ) sub ORDER BY created_at ASC
+            """,
+            (conversation_id,)
+        )
+        history_rows = cur.fetchall()
+        chat_history = [{"role": r[0], "content": r[1]} for r in history_rows]
+        if chat_history and chat_history[-1].get("role") == "user" and chat_history[-1].get("content") == user_text:
+            chat_history = chat_history[:-1]
+
+        # 4. RAG Retrieval
+        doc_ids = req.selected_doc_ids if req.selected_doc_ids is not None else conv.get("selected_doc_ids", [])
+        web_enabled = req.web_search if req.web_search is not None else conv["web_search_enabled"]
+
+        context, citations, search_topic = rag_service.assemble_rag_context(
+            query=user_text,
+            user_id=current_user.user_id,
+            document_ids=doc_ids,
+            enable_web_search=web_enabled,
+            chat_history=chat_history
+        )
+
+        # 5. Extract research query if web search or docs used
+        research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if web_enabled else None)
+
+        # 6. LLM Synthesis
+        try:
+            answer = llm_service.generate_rag_response(
+                query=user_text,
+                chat_history=chat_history,
+                context=context
+            )
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=500, detail=f"LLM generation failed: {e}")
+
+        # 7. Generate follow-up / related questions (Perplexity style)
+        answer = normalize_answer_citations(answer)
+        valid_cites = [c.index for c in citations if getattr(c, "index", None) is not None]
+        _, answer, _ = guardrails.validate_output(answer, valid_citation_indices=valid_cites)
+        telemetry.record_guardrails_score(passed=True, name="output_guardrails_passed", session_id=conversation_id)
+        related_questions = llm_service.generate_followup_questions(user_text, answer)
+
+        # 8. Filter and ground citations against the synthesized answer
+        grounded_citations = rag_service.filter_and_ground_citations(citations, answer)
+        citations_data = [c.model_dump() for c in grounded_citations]
+        cur.execute(
+            """
+            INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
+            VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
+            RETURNING id
+            """,
+            (
+                conversation_id,
+                current_user.user_id,
+                "assistant",
+                answer,
+                json.dumps(citations_data),
+                json.dumps(related_questions),
+                research_query
+            )
+        )
+        assistant_msg_id = str(cur.fetchone()[0])
+
+        cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
+        conn.commit()
         cur.close()
         conn.close()
-        raise HTTPException(status_code=500, detail=f"LLM generation failed: {e}")
 
-    # 7. Generate follow-up / related questions (Perplexity style)
-    answer = normalize_answer_citations(answer)
-    related_questions = llm_service.generate_followup_questions(user_text, answer)
+        telemetry.flush()
 
-    # 8. Filter and ground citations against the synthesized answer
-    grounded_citations = rag_service.filter_and_ground_citations(citations, answer)
-    citations_data = [c.model_dump() for c in grounded_citations]
-    cur.execute(
-        """
-        INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
-        VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
-        RETURNING id
-        """,
-        (
-            conversation_id,
-            current_user.user_id,
-            "assistant",
-            answer,
-            json.dumps(citations_data),
-            json.dumps(related_questions),
-            research_query
+        return SendMessageResponse(
+            message_id=assistant_msg_id,
+            answer=answer,
+            sources=grounded_citations,
+            related_questions=related_questions,
+            research_query=research_query,
+            conversation_id=conversation_id
         )
-    )
-    assistant_msg_id = str(cur.fetchone()[0])
-
-    cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return SendMessageResponse(
-        message_id=assistant_msg_id,
-        answer=answer,
-        sources=grounded_citations,
-        related_questions=related_questions,
-        research_query=research_query,
-        conversation_id=conversation_id
-    )
 
 
 @router.get("/{conversation_id}/messages/stream")
+@telemetry.observe(name="chat-stream")
 async def stream_message(
     conversation_id: str,
     text: str = Query(...),
@@ -387,6 +412,13 @@ async def stream_message(
         cur.close()
         conn.close()
         raise HTTPException(status_code=400, detail="Text cannot be empty")
+
+    is_valid, user_text, violation_reason = guardrails.validate_input(user_text)
+    telemetry.record_guardrails_score(passed=is_valid, name="input_guardrails_passed", session_id=conversation_id, reason=violation_reason)
+    if not is_valid:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail=violation_reason or "Input blocked by security guardrails")
 
     if retry:
         # Delete subsequent assistant message so it can be regenerated clean
@@ -471,65 +503,76 @@ async def stream_message(
     research_query = search_topic if search_topic else (llm_service.extract_research_query(user_text) if web_enabled else None)
 
     async def event_generator():
-        try:
-            # 1. Send title if updated
-            if new_title:
-                yield f"event: title\ndata: {json.dumps({'title': new_title})}\n\n"
+        with telemetry.propagate_attributes(
+            session_id=conversation_id,
+            user_id=user_id,
+            tags=["rag-chat-stream", "docmind"],
+            metadata={"client": "web", "retry": bool(retry)}
+        ):
+            try:
+                # 1. Send title if updated
+                if new_title:
+                    yield f"event: title\ndata: {json.dumps({'title': new_title})}\n\n"
 
-            # 2. Send research status (Perplexity style status bar)
-            research_status = f"Researched {research_query}" if research_query else "Consulted knowledge base"
-            yield f"event: research\ndata: {json.dumps({'query': research_query or user_text[:40], 'status': research_status, 'sources_count': len(citations)})}\n\n"
+                # 2. Send research status (Perplexity style status bar)
+                research_status = f"Researched {research_query}" if research_query else "Consulted knowledge base"
+                yield f"event: research\ndata: {json.dumps({'query': research_query or user_text[:40], 'status': research_status, 'sources_count': len(citations)})}\n\n"
 
-            # 3. Send rich citations
-            citations_data = [c.model_dump() for c in citations]
-            yield f"event: citations\ndata: {json.dumps(citations_data)}\n\n"
+                # 3. Send rich citations
+                citations_data = [c.model_dump() for c in citations]
+                yield f"event: citations\ndata: {json.dumps(citations_data)}\n\n"
 
-            # 4. Stream LLM tokens
-            full_answer = []
-            async for chunk in llm_service.stream_rag_response(user_text, chat_history, context):
-                full_answer.append(chunk)
-                yield f"event: chunk\ndata: {json.dumps({'chunk': chunk})}\n\n"
+                # 4. Stream LLM tokens
+                full_answer = []
+                async for chunk in llm_service.stream_rag_response(user_text, chat_history, context):
+                    full_answer.append(chunk)
+                    yield f"event: chunk\ndata: {json.dumps({'chunk': chunk})}\n\n"
 
-            complete_text = "".join(full_answer)
-            complete_text = normalize_answer_citations(complete_text)
+                complete_text = "".join(full_answer)
+                complete_text = normalize_answer_citations(complete_text)
+                valid_cites = [c.index for c in citations if getattr(c, "index", None) is not None]
+                _, complete_text, _ = guardrails.validate_output(complete_text, valid_citation_indices=valid_cites)
+                telemetry.record_guardrails_score(passed=True, name="output_guardrails_passed", session_id=conversation_id)
 
-            # 5. Filter and ground citations against the synthesized answer
-            grounded_citations = rag_service.filter_and_ground_citations(citations, complete_text)
-            citations_data = [c.model_dump() for c in grounded_citations]
+                # 5. Filter and ground citations against the synthesized answer
+                grounded_citations = rag_service.filter_and_ground_citations(citations, complete_text)
+                citations_data = [c.model_dump() for c in grounded_citations]
 
-            # 6. Generate follow-up / related questions
-            related_questions = llm_service.generate_followup_questions(user_text, complete_text)
-            yield f"event: related\ndata: {json.dumps(related_questions)}\n\n"
+                # 6. Generate follow-up / related questions
+                related_questions = llm_service.generate_followup_questions(user_text, complete_text)
+                yield f"event: related\ndata: {json.dumps(related_questions)}\n\n"
 
-            # 7. Save assistant message to DB
-            save_conn = get_db_conn()
-            save_cur = save_conn.cursor()
-            save_cur.execute(
-                """
-                INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
-                VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
-                RETURNING id
-                """,
-                (
-                    conversation_id,
-                    user_id,
-                    "assistant",
-                    complete_text,
-                    json.dumps(citations_data),
-                    json.dumps(related_questions),
-                    research_query
+                # 7. Save assistant message to DB
+                save_conn = get_db_conn()
+                save_cur = save_conn.cursor()
+                save_cur.execute(
+                    """
+                    INSERT INTO messages (conversation_id, user_id, role, content, sources, related_questions, research_query)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
+                    RETURNING id
+                    """,
+                    (
+                        conversation_id,
+                        user_id,
+                        "assistant",
+                        complete_text,
+                        json.dumps(citations_data),
+                        json.dumps(related_questions),
+                        research_query
+                    )
                 )
-            )
-            msg_id = str(save_cur.fetchone()[0])
-            save_cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
-            save_conn.commit()
-            save_cur.close()
-            save_conn.close()
+                msg_id = str(save_cur.fetchone()[0])
+                save_cur.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conversation_id,))
+                save_conn.commit()
+                save_cur.close()
+                save_conn.close()
 
-            yield f"event: done\ndata: {json.dumps({'message_id': msg_id, 'sources': citations_data, 'related_questions': related_questions, 'research_query': research_query})}\n\n"
-        except Exception as e:
-            logger.error(f"Error in stream_chat_response event_generator: {e}", exc_info=True)
-            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                yield f"event: done\ndata: {json.dumps({'message_id': msg_id, 'sources': citations_data, 'related_questions': related_questions, 'research_query': research_query})}\n\n"
+            except Exception as e:
+                logger.error(f"Error in stream_chat_response event_generator: {e}", exc_info=True)
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+            finally:
+                telemetry.flush()
 
     return StreamingResponse(
         event_generator(),

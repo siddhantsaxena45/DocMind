@@ -214,16 +214,23 @@ def delete_document(
 
 # Backward-compatible aliases
 @router.get("/documents/{user_id}", include_in_schema=False)
-def get_documents_legacy(user_id: str):
+def get_documents_legacy(
+    user_id: str,
+    current_user: AuthUser = Depends(get_current_user)
+):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to user documents")
     conn = get_db_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, filename, file_type, file_size, status, chunk_count FROM documents WHERE user_id = %s ORDER BY created_at DESC",
-        (user_id,)
-    )
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, filename, file_type, file_size, status, chunk_count FROM documents WHERE user_id = %s ORDER BY created_at DESC",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
     return {
         "documents": [
             {
