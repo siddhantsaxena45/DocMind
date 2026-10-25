@@ -75,7 +75,7 @@ DocMind includes an automated evaluation benchmark suite ([`backend/tests/evals_
 * **Defense-in-Depth AI Guardrails:** Pre-inference regex and heuristic prompt injection detection, SSRF pre-resolution DNS blocking (blocking loopback, private RFC1918 subnets, and AWS/GCP cloud metadata `169.254.169.254`), and strict tenant database isolation.
 * **Multi-Engine Fast Web Cascade:** Bypasses cloud datacenter IP blocks on Render/AWS by cascading across `ddgs` (excluding Mojeek), direct **Bing HTML search**, **Google News RSS**, and **DuckDuckGo Lite**.
 * **Universal Multi-Format Ingestion:** Traverses underlying PDF `/Annots` `/URI` dictionaries, DOCX relationship XML (`document.xml.rels`), PPTX slide relations, and XLSX cell links, preserving active URLs and structure across all documents.
-* **100% Free-Tier Resilient:** Seamlessly rotates through an automated pool of 9 Google Gemini keys with automatic 429 self-healing, Pinecone Serverless, Supabase free Postgres, and Langfuse Cloud.
+* **100% Free-Tier Resilient:** Seamlessly rotates through an automated pool of 10 Google Gemini keys with automatic 429 self-healing, Pinecone Serverless, Supabase free Postgres, and Langfuse Cloud.
 
 ---
 
@@ -96,7 +96,7 @@ DocMind includes an automated evaluation benchmark suite ([`backend/tests/evals_
         ▼                                 ▼                                 ▼
 ┌───────────────────┐           ┌───────────────────┐           ┌───────────────────┐
 │ Input Guardrails  │           │   Semantic Cache  │           │   Multi-Key Pool  │
-│ - Injection Check │           │ - LRU Eviction    │           │ - 9 Gemini Keys   │
+│ - Injection Check │           │ - LRU Eviction    │           │ - 10 Gemini Keys  │
 │ - SSRF DNS Filter │           │ - Sub-15ms Return │           │ - 429 Auto-Heal   │
 └─────────┬─────────┘           └─────────┬─────────┘           └─────────┬─────────┘
           │                               │ (Cache Miss)                  │
