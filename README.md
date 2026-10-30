@@ -376,7 +376,7 @@ GET /api/conversations/123/messages/stream?text=explain+quantum+coherence&token=
 Developed by **[Siddhant Saxena](https://github.com/siddhantsaxena45)**  
 Computer Science Undergraduate • AI & Full-Stack Developer  
 * **GitHub:** [@siddhantsaxena45](https://github.com/siddhantsaxena45)  
-* **LinkedIn:** [Siddhant Saxena](https://linkedin.com/in/siddhant-saxena)  
+* **LinkedIn:** [Siddhant Saxena](https://www.linkedin.com/in/siddhant-saxena-617286271/)  
 * **Repository:** [DocMind AI](https://github.com/siddhantsaxena45/DocMind)
 
 Licensed under the **MIT License**. Free for educational, academic, and open-source use.
